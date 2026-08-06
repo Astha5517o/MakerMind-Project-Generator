@@ -1,0 +1,6 @@
+{
+  "name": "MakerMind Project Generator",
+  "description": "Dynamic AI STEM school and college project blueprint generator with unique component selection, step-by-step assembly, and viva voce Q&A.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
