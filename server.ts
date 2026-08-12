@@ -2,6 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
+import { generateOfflineBlueprint } from "./src/data/offlineGenerator";
 
 const app = express();
 app.use(express.json());
@@ -22,6 +23,38 @@ const getGeminiClient = () => {
   });
 };
 
+// Retry helper for handling temporary 503 / 429 model capacity spikes
+async function callGeminiWithRetry<T>(fn: () => Promise<T>, maxRetries = 2, initialDelayMs = 1200): Promise<T> {
+  let attempt = 0;
+  let delay = initialDelayMs;
+  while (true) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      attempt++;
+      const errMsg = String(err?.message || err);
+      const isTransient =
+        err?.status === 503 ||
+        err?.status === 429 ||
+        err?.code === 503 ||
+        err?.code === 429 ||
+        errMsg.includes("high demand") ||
+        errMsg.includes("UNAVAILABLE") ||
+        errMsg.includes("RESOURCE_EXHAUSTED") ||
+        errMsg.includes("503") ||
+        errMsg.includes("overloaded");
+
+      if (isTransient && attempt <= maxRetries) {
+        console.warn(`Gemini API high demand (attempt ${attempt}/${maxRetries + 1}). Retrying in ${delay}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        delay *= 1.5;
+      } else {
+        throw err;
+      }
+    }
+  }
+}
+
 // API Health Check
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", geminiAvailable: !!process.env.GEMINI_API_KEY });
@@ -29,16 +62,18 @@ app.get("/api/health", (req, res) => {
 
 // API Blueprint Generator
 app.post("/api/generate-blueprint", async (req, res) => {
-  try {
-    const { level, subject, topic, budget, angleNonce, forceNewAngle } = req.body;
+  const { level, subject, topic, budget, angleNonce, forceNewAngle } = req.body;
 
+  try {
     const ai = getGeminiClient();
 
     if (!ai) {
-      return res.status(503).json({
-        error: "GEMINI_API_KEY is not configured",
-        useFallback: true,
-      });
+      console.log("No GEMINI_API_KEY configured, serving offline engine blueprint...");
+      const fallbackBp = generateOfflineBlueprint(
+        { level, subject, topic, budget },
+        angleNonce
+      );
+      return res.json({ success: true, blueprint: fallbackBp, isFallback: true });
     }
 
     const prompt = `Generate an authoritative, highly customized, and accurate STEM project blueprint tailored specifically to the user's topic:
@@ -58,119 +93,128 @@ STRICT ACCURACY & TITLE MANDATES:
 6. VIVA VOCE QUESTIONS: Provide 5 lab examiner questions and complete answers directly testing concepts related to "${topic}".
 7. ASCII BLOCK DIAGRAM: Provide an ASCII signal flow diagram connecting the specific sensors and actuators used for "${topic}".`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
-      contents: prompt,
-      config: {
-        systemInstruction:
-          "You are MakerMind, a world-class STEM project architect and engineering professor. Your duty is to generate ACCURATE, custom, specific, and realistic STEM project blueprints based on the user's specific project topic. NEVER return generic boilerplate or repeated titles. Each project MUST have a unique, precise, academic title that directly incorporates the user's specific topic, hardware components, and technical approach.",
-        temperature: 0.85,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            title: { type: Type.STRING, description: "Unique descriptive title for the project" },
-            angleTag: { type: Type.STRING, description: "Short 3-5 word angle tag e.g. Edge-AI & Ultrasonic Fusion" },
-            overview: { type: Type.STRING, description: "High-level summary of what the project accomplishes and why it is unique" },
-            difficulty: { type: Type.STRING, description: "Beginner, Intermediate, or Advanced" },
-            buildTime: { type: Type.STRING, description: "Estimated time to construct e.g. 4-6 Hours" },
-            budgetCategory: { type: Type.STRING, description: "Budget range matching requested" },
-            estimatedTotalCostINR: { type: Type.NUMBER, description: "Total calculated cost in INR" },
-            materials: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  name: { type: Type.STRING },
-                  qty: { type: Type.STRING },
-                  costINR: { type: Type.NUMBER },
-                  purpose: { type: Type.STRING },
-                  alternativeComponent: { type: Type.STRING }
-                },
-                required: ["name", "qty", "costINR", "purpose"]
+    const response = await callGeminiWithRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-3.6-flash",
+        contents: prompt,
+        config: {
+          systemInstruction:
+            "You are MakerMind, a world-class STEM project architect and engineering professor. Your duty is to generate ACCURATE, custom, specific, and realistic STEM project blueprints based on the user's specific project topic. NEVER return generic boilerplate or repeated titles. Each project MUST have a unique, precise, academic title that directly incorporates the user's specific topic, hardware components, and technical approach.",
+          temperature: 0.85,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING, description: "Unique descriptive title for the project" },
+              angleTag: { type: Type.STRING, description: "Short 3-5 word angle tag e.g. Edge-AI & Ultrasonic Fusion" },
+              overview: { type: Type.STRING, description: "High-level summary of what the project accomplishes and why it is unique" },
+              difficulty: { type: Type.STRING, description: "Beginner, Intermediate, or Advanced" },
+              buildTime: { type: Type.STRING, description: "Estimated time to construct e.g. 4-6 Hours" },
+              budgetCategory: { type: Type.STRING, description: "Budget range matching requested" },
+              estimatedTotalCostINR: { type: Type.NUMBER, description: "Total calculated cost in INR" },
+              materials: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    name: { type: Type.STRING },
+                    qty: { type: Type.STRING },
+                    costINR: { type: Type.NUMBER },
+                    purpose: { type: Type.STRING },
+                    alternativeComponent: { type: Type.STRING }
+                  },
+                  required: ["name", "qty", "costINR", "purpose"]
+                }
+              },
+              toolsRequired: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+              },
+              assemblySteps: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    stepNumber: { type: Type.NUMBER },
+                    title: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    proTip: { type: Type.STRING },
+                    codeOrSchematicSnippet: { type: Type.STRING }
+                  },
+                  required: ["stepNumber", "title", "description"]
+                }
+              },
+              scientificPrinciples: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING },
+                    explanation: { type: Type.STRING },
+                    realWorldUsage: { type: Type.STRING }
+                  },
+                  required: ["title", "explanation"]
+                }
+              },
+              vivaQuestions: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    question: { type: Type.STRING },
+                    answer: { type: Type.STRING },
+                    hint: { type: Type.STRING }
+                  },
+                  required: ["question", "answer"]
+                }
+              },
+              blockDiagram: { type: Type.STRING, description: "ASCII or text block diagram representing signal flow or mechanical layout" },
+              safetyTips: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+              },
+              extensionIdeas: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
               }
             },
-            toolsRequired: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
-            },
-            assemblySteps: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  stepNumber: { type: Type.NUMBER },
-                  title: { type: Type.STRING },
-                  description: { type: Type.STRING },
-                  proTip: { type: Type.STRING },
-                  codeOrSchematicSnippet: { type: Type.STRING }
-                },
-                required: ["stepNumber", "title", "description"]
-              }
-            },
-            scientificPrinciples: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  title: { type: Type.STRING },
-                  explanation: { type: Type.STRING },
-                  realWorldUsage: { type: Type.STRING }
-                },
-                required: ["title", "explanation"]
-              }
-            },
-            vivaQuestions: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  question: { type: Type.STRING },
-                  answer: { type: Type.STRING },
-                  hint: { type: Type.STRING }
-                },
-                required: ["question", "answer"]
-              }
-            },
-            blockDiagram: { type: Type.STRING, description: "ASCII or text block diagram representing signal flow or mechanical layout" },
-            safetyTips: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
-            },
-            extensionIdeas: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
-            }
-          },
-          required: [
-            "title",
-            "angleTag",
-            "overview",
-            "difficulty",
-            "buildTime",
-            "budgetCategory",
-            "estimatedTotalCostINR",
-            "materials",
-            "toolsRequired",
-            "assemblySteps",
-            "scientificPrinciples",
-            "vivaQuestions",
-            "blockDiagram",
-            "safetyTips",
-            "extensionIdeas"
-          ]
+            required: [
+              "title",
+              "angleTag",
+              "overview",
+              "difficulty",
+              "buildTime",
+              "budgetCategory",
+              "estimatedTotalCostINR",
+              "materials",
+              "toolsRequired",
+              "assemblySteps",
+              "scientificPrinciples",
+              "vivaQuestions",
+              "blockDiagram",
+              "safetyTips",
+              "extensionIdeas"
+            ]
+          }
         }
-      }
-    });
+      })
+    );
 
     const jsonText = response.text || "{}";
     const parsedData = JSON.parse(jsonText);
-    res.json({ success: true, blueprint: parsedData });
+    return res.json({ success: true, blueprint: parsedData, isFallback: false });
   } catch (err: any) {
-    console.error("Gemini Blueprint Generation Error:", err);
-    res.status(500).json({
-      error: err?.message || "Failed to generate blueprint via Gemini",
-      useFallback: true
+    console.warn("Gemini Generation Notice (falling back to offline generator):", err?.message || err);
+    // Serve high quality offline generated blueprint seamlessly
+    const fallbackBp = generateOfflineBlueprint(
+      { level, subject, topic, budget },
+      angleNonce
+    );
+    return res.json({
+      success: true,
+      blueprint: fallbackBp,
+      isFallback: true,
+      notice: "High model demand detected; generated using MakerMind local STEM engine."
     });
   }
 });
