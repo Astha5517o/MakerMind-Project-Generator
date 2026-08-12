@@ -16,6 +16,7 @@ import { SavedDrawer } from "./components/SavedDrawer";
 import { ComparisonModal } from "./components/ComparisonModal";
 import { AboutModal } from "./components/AboutModal";
 import { AboutMeModal } from "./components/AboutMeModal";
+import { GoogleAIFooter } from "./components/GoogleAIFooter";
 import { 
   Sparkles, 
   ArrowLeft, 
@@ -284,27 +285,8 @@ export default function App() {
         />
       )}
 
-      {/* Footer */}
-      <footer className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-300">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Cpu className="w-4 h-4 text-emerald-400" />
-            <span className="font-semibold text-slate-300">MakerMind STEM Engine</span>
-            <span className="text-slate-500">•</span>
-            <span>Zero-Repeat Project Generator</span>
-          </div>
-          <div className="flex items-center gap-4 text-slate-400">
-            <button
-              onClick={() => setAboutModalOpen(true)}
-              className="hover:text-emerald-400 transition-colors cursor-pointer underline underline-offset-4"
-            >
-              About & Engine Specs
-            </button>
-            <span>•</span>
-            <span>Built with React, Tailwind CSS & Google Gemini</span>
-          </div>
-        </div>
-      </footer>
+      {/* Google AI Showcase Footer */}
+      <GoogleAIFooter />
     </div>
   );
 }

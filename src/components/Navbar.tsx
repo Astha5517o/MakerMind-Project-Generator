@@ -1,5 +1,6 @@
 import React from "react";
 import { Cpu, Bookmark, Sparkles, RefreshCw, Layers, Info, User } from "lucide-react";
+import appIconUrl from "../assets/images/makermind_app_icon_1786532760729.jpg";
 
 interface NavbarProps {
   savedCount: number;
@@ -26,8 +27,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           onClick={onReset}
           className="flex items-center gap-3 group text-left focus:outline-none cursor-pointer"
         >
-          <div className="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center font-bold text-white shadow-md shadow-indigo-600/30 group-hover:bg-indigo-500 transition-all">
-            M
+          <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-indigo-500/40 shadow-lg shadow-indigo-600/20 group-hover:border-emerald-400 group-hover:scale-105 transition-all">
+            <img 
+              src={appIconUrl} 
+              alt="MakerMind Logo" 
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
           </div>
           <div>
             <div className="flex items-center">
