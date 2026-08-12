@@ -41,29 +41,30 @@ app.post("/api/generate-blueprint", async (req, res) => {
       });
     }
 
-    const prompt = `You are MakerMind, a world-class STEM educator, maker-lab mentor, and engineering professor.
-Generate a comprehensive, highly unique, detailed, step-by-step STEM project blueprint for:
-- Student Academic Level: ${level || "High School / Class 11-12"}
-- Subject Area: ${subject || "Robotics & Electronics"}
-- Project Topic Keywords: "${topic || "Smart System"}"
+    const prompt = `Generate an authoritative, highly customized, and accurate STEM project blueprint tailored specifically to the user's topic:
+- Target Topic / Concept: "${topic || "Smart Automated System"}"
+- Academic Level: ${level || "High School / Class 11-12"}
+- Subject Discipline: ${subject || "Robotics & Electronics"}
 - Budget Category: ${budget || "Medium / ₹500 - ₹2000"}
 - Innovation Seed / Variation Nonce: ${angleNonce || Date.now()}
-- User Requested Alternative Perspective: ${forceNewAngle ? "YES - force a completely different angle/approach" : "NO"}
+- Force New Perspective: ${forceNewAngle ? "YES - explore a completely distinct technical mechanism or sensor topology" : "NO"}
 
-CRITICAL NON-REPETITION MANDATE:
-- Never provide generic or cookie-cutter solutions.
-- Pick a distinct technical angle (e.g., edge AI vs analog sensor feedback, low-cost rural deployment vs high-density IoT grid, biomimetic approach, sustainable solar-hybrid, etc.).
-- Custom component selection with realistic INR (₹) prices.
-- Detailed step-by-step assembly with code or circuit schematic guidance.
-- 4 to 5 insightful Viva Voce questions with detailed answers and hints.
-- Output strictly valid JSON matching the requested schema.`;
+STRICT ACCURACY & TITLE MANDATES:
+1. TITLE: Create an ACCURATE, specific, formal academic project title that explicitly mentions the user's exact topic "${topic}" and key hardware/technique used. (e.g. For "solar tracker" -> "Dual-Axis Solar Tracker with LDR Sensors & Servo Optimization"; for "blind stick" -> "Microcontroller-Based Smart Blind Stick with Ultrasonic Sensing & Haptic Feedback"). DO NOT output generic titles like "Smart System" or "Project v1.0".
+2. OVERVIEW: Write a 3-4 sentence project overview directly explaining how this project solves the specific real-world problem of "${topic}".
+3. MATERIALS / BOM: Choose 5-8 REAL, domain-specific components with accurate Indian Rupee (₹) pricing explicitly required for "${topic}" (e.g. if water quality -> pH sensor / turbidity sensor; if security -> PIR / solenoid / buzzer; if vehicle -> motors / driver / chassis).
+4. ASSEMBLY STEPS: Provide 5 detailed step-by-step assembly instructions with pin wiring and code/circuit snippets specifically for "${topic}".
+5. SCIENTIFIC PRINCIPLES: Detail 3 fundamental scientific principles governing how "${topic}" operates.
+6. VIVA VOCE QUESTIONS: Provide 5 lab examiner questions and complete answers directly testing concepts related to "${topic}".
+7. ASCII BLOCK DIAGRAM: Provide an ASCII signal flow diagram connecting the specific sensors and actuators used for "${topic}".`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3.6-flash",
       contents: prompt,
       config: {
         systemInstruction:
-          "You are a STEM Project Blueprint Generator. Always output structured JSON with realistic components, costs in INR (₹), step-by-step assembly instructions, scientific principles, and viva voce Q&A.",
+          "You are MakerMind, a world-class STEM project architect and engineering professor. Your duty is to generate ACCURATE, custom, specific, and realistic STEM project blueprints based on the user's specific project topic. NEVER return generic boilerplate or repeated titles. Each project MUST have a unique, precise, academic title that directly incorporates the user's specific topic, hardware components, and technical approach.",
+        temperature: 0.85,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,

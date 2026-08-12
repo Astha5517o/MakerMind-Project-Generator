@@ -55,7 +55,7 @@ export function generateOfflineBlueprint(
   angleIndexOverride?: number
 ): ProjectBlueprint {
   const seed = Date.now() + Math.floor(Math.random() * 10000);
-  const topicClean = inputs.topic.trim() || "Smart Automated System";
+  const topicClean = inputs.topic.trim() || "Automated Smart System";
   
   // Choose angle dynamically or force next angle
   const angleIdx = angleIndexOverride !== undefined 
@@ -73,9 +73,9 @@ export function generateOfflineBlueprint(
   const displayIndex = (seed + 3) % DISPLAY_UNITS.length;
   const display = DISPLAY_UNITS[displayIndex];
 
-  // Generate subject specific components
-  const subjectComponents = getSubjectComponents(inputs.subject, seed);
-  
+  // Generate topic & domain specific components and title
+  const { title, domainComponents, domainPrinciples, domainViva } = getTopicCustomizations(topicClean, inputs.subject, mcu.name, angleObj.tag, seed);
+
   const materials: MaterialItem[] = [
     {
       id: `mat-mcu-${seed}`,
@@ -86,7 +86,7 @@ export function generateOfflineBlueprint(
       alternativeComponent: mcu.alt,
       checked: false
     },
-    ...subjectComponents,
+    ...domainComponents,
     {
       id: `mat-pwr-${seed}`,
       name: power.name,
@@ -118,7 +118,7 @@ export function generateOfflineBlueprint(
 
   const estimatedTotalCostINR = materials.reduce((sum, m) => sum + m.costINR, 0);
 
-  // Dynamic Assembly Steps
+  // Dynamic Assembly Steps tailored to the topic
   const assemblySteps: AssemblyStep[] = [
     {
       stepNumber: 1,
@@ -136,32 +136,26 @@ export function generateOfflineBlueprint(
     },
     {
       stepNumber: 3,
-      title: "Sensor Transducer Interfacing & Signal Conditioning",
-      description: `Integrate the ${subjectComponents[0]?.name || "Primary Sensor Transducer"}. Connect digital/analog output to the designated ADC channel on ${mcu.name}.`,
-      proTip: "Use a simple exponential moving average filter in code to eliminate high-frequency sensor noise.",
+      title: `${domainComponents[0]?.name || "Primary Sensor"} Interfacing & Signal Conditioning`,
+      description: `Integrate the ${domainComponents[0]?.name || "Primary Sensor Transducer"}. Wire its signal lead to the analog/digital GPIO pin of ${mcu.name} and configure input pinmode.`,
+      proTip: "Use a simple exponential moving average filter in software to eliminate high-frequency noise spikes.",
       codeOrSchematicSnippet: `float rawVal = analogRead(A0);\nfloat filteredVal = (0.2 * rawVal) + (0.8 * prevVal);`
     },
     {
       stepNumber: 4,
-      title: "Actuator & Output Driver Integration",
-      description: `Connect the driver circuit for ${subjectComponents[1]?.name || "Output Load"}. Ensure ground leads of the MCU and external power supply are tied together (Common Ground).`,
-      proTip: "Always insert a flyback diode (1N4007) across relay or motor coils to prevent back-EMF damaging microchips.",
-      codeOrSchematicSnippet: `digitalWrite(RELAY_PIN, HIGH); // Engage load\ndelay(1000); // Pulse delay`
+      title: `${domainComponents[1]?.name || "Actuator Module"} Output Driver Integration`,
+      description: `Connect the driver circuit for ${domainComponents[1]?.name || "Actuator Module"}. Ensure ground leads of the MCU and power supply are tied together (Common Ground).`,
+      proTip: "Always insert a flyback diode (1N4007) across inductive relay or motor coils to prevent back-EMF spikes.",
+      codeOrSchematicSnippet: `digitalWrite(ACTUATOR_PIN, HIGH); // Trigger output load\ndelay(500);`
     },
     {
       stepNumber: 5,
-      title: "Firmware Flashing, Calibration & Operational Testing",
-      description: `Upload the control firmware onto ${mcu.name}. Run test routines to calibrate threshold values under varying environmental conditions.`,
+      title: "Firmware Flashing, Threshold Calibration & Final Field Test",
+      description: `Upload the control firmware onto ${mcu.name}. Run diagnostic routines to calibrate threshold trigger values for ${topicClean}.`,
       proTip: "Print diagnostic telemetry to the Serial Monitor at 115200 baud for step-by-step debugging.",
-      codeOrSchematicSnippet: `void setup() {\n  Serial.begin(115200);\n  pinMode(ACTUATOR_PIN, OUTPUT);\n}\nvoid loop() {\n  // Core control loop executing ${angleObj.tag}\n}`
+      codeOrSchematicSnippet: `void setup() {\n  Serial.begin(115200);\n  pinMode(ACTUATOR_PIN, OUTPUT);\n}\nvoid loop() {\n  // Core logic loop for ${topicClean}\n}`
     }
   ];
-
-  // Scientific principles
-  const scientificPrinciples: ScientificPrinciple[] = getScientificPrinciples(inputs.subject, topicClean, angleObj.tag);
-
-  // Viva Questions
-  const vivaQuestions: VivaQuestion[] = getVivaQuestions(inputs.subject, topicClean, mcu.name, angleObj.tag, seed);
 
   // Block diagram text
   const blockDiagram = `+-------------------------------------------------------------+
@@ -170,21 +164,21 @@ export function generateOfflineBlueprint(
  [ ${power.name} ] 
         | (VCC / GND)
         v
- [ ${subjectComponents[0]?.name || "Primary Sensor"} ] ---(Analog/Digital Signal)---> [ ${mcu.name} ]
+ [ ${domainComponents[0]?.name || "Primary Sensor"} ] ---(Signal Input)---> [ ${mcu.name} ]
                                                              |
-                                                             +---(I2C Data)---> [ ${display.name} ]
+                                                             +---(I2C Bus)---> [ ${display.name} ]
                                                              |
-                                                             +---(Control Pin)---> [ ${subjectComponents[1]?.name || "Relay Actuator"} ]
+                                                             +---(Control Output)---> [ ${domainComponents[1]?.name || "Actuator Module"} ]
 +-------------------------------------------------------------+
-| Operational Paradigm: ${angleObj.tag} |
+| System Paradigm: ${angleObj.tag} |
 +-------------------------------------------------------------+`;
 
   return {
     id: `blueprint-${seed}`,
     createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-    title: `${topicClean}: ${angleObj.tag.replace(" Angle", "")} v${(seed % 5) + 1}.0`,
+    title,
     angleTag: angleObj.tag,
-    overview: `This project blueprint delivers a cutting-edge implementation of "${topicClean}" tailored for ${inputs.level}. Designed around the ${angleObj.tag}, this iteration ${angleObj.focus} It optimizes component costs while ensuring robust real-world lab reproducibility.`,
+    overview: `This project blueprint provides an accurate, lab-tested implementation of "${topicClean}" tailored for ${inputs.level}. Designed around the ${angleObj.tag}, this project ${angleObj.focus} It optimizes component costs while ensuring high scientific clarity and practical buildability.`,
     difficulty: inputs.level.includes("College") ? "Advanced" : inputs.level.includes("High School") ? "Intermediate" : "Beginner",
     buildTime: inputs.level.includes("College") ? "6-8 Hours" : inputs.level.includes("High School") ? "4-5 Hours" : "2-3 Hours",
     budgetCategory: inputs.budget,
@@ -202,8 +196,8 @@ export function generateOfflineBlueprint(
       "Safety Goggles & ESD Wrist Strap"
     ],
     assemblySteps,
-    scientificPrinciples,
-    vivaQuestions,
+    scientificPrinciples: domainPrinciples,
+    vivaQuestions: domainViva,
     blockDiagram,
     safetyTips: [
       "Always disconnect external DC/AC power before modifying breadboard jumper connections.",
@@ -212,177 +206,376 @@ export function generateOfflineBlueprint(
       "Wear eye safety protection when operating hot glue guns, soldering irons, or cutting component pins."
     ],
     extensionIdeas: [
-      "Add a Bluetooth HC-05 module to enable mobile smartphone telemetry and manual control overrides.",
-      "Implement deep sleep power modes to extend battery lifespan up to 6 months for field deployment.",
-      "Integrate an micro-SD card logger module (SPI bus) to record long-term sensor data for statistical analysis.",
-      "Connect an IoT cloud server (Blynk / Thingspeak / Adafruit IO) to plot real-time graphical analytics."
+      `Add a Bluetooth HC-05 or Wi-Fi module to enable smartphone telemetry for ${topicClean}.`,
+      "Implement deep sleep power modes to extend battery operating life for field deployment.",
+      "Integrate an SD card logging shield to record continuous long-term sensor datasets.",
+      "Connect an IoT web dashboard (Blynk / Adafruit IO) to monitor real-time graphs remotely."
     ],
     isAiGenerated: false
   };
 }
 
-function getSubjectComponents(subject: string, seed: number): MaterialItem[] {
-  switch (subject) {
-    case "Computer Science & AI":
-      return [
-        {
-          id: `sub-1-${seed}`,
-          name: seed % 2 === 0 ? "HC-SR04 Ultrasonic Distance Sensor" : "DHT22 Precision Temp & Humidity Sensor",
-          qty: "1 Pc",
-          costINR: 120,
-          purpose: "Capturing environment sensor inputs for machine learning classifier",
-          alternativeComponent: "VL53L0X Time-of-Flight Laser Ranging Sensor",
-          checked: false
-        },
-        {
-          id: `sub-2-${seed}`,
-          name: "5V 1-Channel Optocoupler Relay Module",
-          qty: "1 Pc",
-          costINR: 90,
-          purpose: "Triggering external high-power indicator or buzzer alarm",
-          alternativeComponent: "TIP120 NPN Darlington Transistor Driver",
-          checked: false
-        }
-      ];
-    case "Physics & Applied Mechanics":
-      return [
-        {
-          id: `sub-1-${seed}`,
-          name: seed % 2 === 0 ? "50kg Load Cell Strain Gauge + HX711 ADC Module" : "Piezoelectric Force Sensor Disc Array",
-          qty: "1 Set",
-          costINR: 240,
-          purpose: "Converting mechanical strain & force into high-resolution digital voltage signals",
-          alternativeComponent: "Flex Pressure Resistive Transducer (FSR402)",
-          checked: false
-        },
-        {
-          id: `sub-2-${seed}`,
-          name: "SG90 Micro Servo Motor (1.8kg.cm Torque)",
-          qty: "1 Pc",
-          costINR: 160,
-          purpose: "Precision angular positional control and mechanical release gate",
-          alternativeComponent: "28BYJ-48 Stepper Motor + ULN2003 Driver Board",
-          checked: false
-        }
-      ];
-    case "Chemistry & Material Science":
-      return [
-        {
-          id: `sub-1-${seed}`,
-          name: seed % 2 === 0 ? "Analog pH Sensor Probe Module (0-14 pH)" : "MQ-135 Air Quality & Gas Detection Sensor",
-          qty: "1 Unit",
-          costINR: 750,
-          purpose: "Continuous ionic concentration monitoring and chemical threshold measurement",
-          alternativeComponent: "Turbidity Water Clarity Optical Sensor Probe",
-          checked: false
-        },
-        {
-          id: `sub-2-${seed}`,
-          name: "12V Micro Peristaltic Dosing Pump",
-          qty: "1 Pc",
-          costINR: 420,
-          purpose: "Precision automated volumetric chemical reagent liquid dosing",
-          alternativeComponent: "5V Mini Submersible DC Water Pump",
-          checked: false
-        }
-      ];
-    case "Environmental & Green Tech":
-      return [
-        {
-          id: `sub-1-${seed}`,
-          name: seed % 2 === 0 ? "Capacitive Soil Moisture Sensor (Corrosion Resistant)" : "BH1750 Digital Ambient Light Intensity Lux Sensor",
-          qty: "1 Pc",
-          costINR: 110,
-          purpose: "Monitoring soil water dielectric constant without probe degradation",
-          alternativeComponent: "Resistive Soil Moisture Probe Pair",
-          checked: false
-        },
-        {
-          id: `sub-2-${seed}`,
-          name: "5V Mini DC Submersible Water Pump (3W)",
-          qty: "1 Pc",
-          costINR: 180,
-          purpose: "Controlled eco-irrigation fluid transport",
-          alternativeComponent: "12V Solenoid Water Valve 1/2 inch",
-          checked: false
-        }
-      ];
-    case "Robotics & Electronics":
-    default:
-      return [
-        {
-          id: `sub-1-${seed}`,
-          name: seed % 2 === 0 ? "L298N Dual H-Bridge Motor Driver Board" : "MPU6050 6-DOF Gyroscope & Accelerometer Module",
-          qty: "1 Pc",
-          costINR: 210,
-          purpose: "Bi-directional high-current DC motor control and speed modulation",
-          alternativeComponent: "TB6612FNG Compact Dual Motor Driver",
-          checked: false
-        },
-        {
-          id: `sub-2-${seed}`,
-          name: "TT Dual Shaft Gearbox Motors (200 RPM) + Wheels",
-          qty: "2 Pcs",
-          costINR: 190,
-          purpose: "Robotic chassis movement propulsion",
-          alternativeComponent: "N20 Micro Metal Gear Motor 12V",
-          checked: false
-        }
-      ];
-  }
-}
+// Topic parser and customization generator
+function getTopicCustomizations(
+  topicRaw: string, 
+  subject: string, 
+  mcuName: string, 
+  angleTag: string, 
+  seed: number
+) {
+  const topic = topicRaw.toLowerCase();
 
-function getScientificPrinciples(subject: string, topic: string, angleTag: string): ScientificPrinciple[] {
-  return [
+  let title = "";
+  let domainComponents: MaterialItem[] = [];
+
+  // 1. Solar Tracker
+  if (topic.includes("solar") || topic.includes("sun")) {
+    title = "Dual-Axis Smart Solar Tracking Engine with LDR & Servo Control";
+    domainComponents = [
+      {
+        id: `dom-1-${seed}`,
+        name: "LDR Light Dependent Resistor Module Array (4 Pcs)",
+        qty: "1 Set",
+        costINR: 120,
+        purpose: "Detecting differential ambient light intensity for solar tracking",
+        alternativeComponent: "BH1750 Digital Lux Sensor Array",
+        checked: false
+      },
+      {
+        id: `dom-2-${seed}`,
+        name: "SG90 Micro Servo Motors (2 Pcs - Pan/Tilt Axis)",
+        qty: "2 Pcs",
+        costINR: 320,
+        purpose: "Dual-axis angular mechanical positioning of solar panel",
+        alternativeComponent: "28BYJ-48 Stepper Motors with ULN2003 Drivers",
+        checked: false
+      },
+      {
+        id: `dom-3-${seed}`,
+        name: "6V 2W Monocrystalline Solar Panel + Voltage Sensor Module",
+        qty: "1 Set",
+        costINR: 280,
+        purpose: "Energy generation and real-time output voltage telemetry",
+        alternativeComponent: "5V Flexible Solar Cell Matrix",
+        checked: false
+      }
+    ];
+  } 
+  // 2. Blind Stick / Visually Impaired Navigation
+  else if (topic.includes("blind") || topic.includes("visually") || topic.includes("stick") || topic.includes("obstacle")) {
+    title = "Microcontroller Smart Blind Stick with Ultrasonic Ranging & Haptic Feedback";
+    domainComponents = [
+      {
+        id: `dom-1-${seed}`,
+        name: "HC-SR04 Ultrasonic Distance Sensor Module",
+        qty: "2 Pcs",
+        costINR: 180,
+        purpose: "Detecting low-lying and head-height obstacles up to 400cm",
+        alternativeComponent: "VL53L0X Time-of-Flight Laser Distance Sensor",
+        checked: false
+      },
+      {
+        id: `dom-2-${seed}`,
+        name: "Coin Vibration Motor (3V) & High-Decibel Active Buzzer",
+        qty: "1 Set",
+        costINR: 90,
+        purpose: "Delivering haptic tactile vibration and acoustic distance warnings",
+        alternativeComponent: "PWM Audio Transducer Speaker",
+        checked: false
+      },
+      {
+        id: `dom-3-${seed}`,
+        name: "Water Rain Sensor PCB Module",
+        qty: "1 Pc",
+        costINR: 70,
+        purpose: "Alerting the user to puddles, wet surfaces, or rain",
+        alternativeComponent: "Soil Moisture Conductivity Probe",
+        checked: false
+      }
+    ];
+  }
+  // 3. Irrigation / Agriculture / Plant
+  else if (topic.includes("irrigation") || topic.includes("soil") || topic.includes("plant") || topic.includes("agriculture") || topic.includes("farm")) {
+    title = "Automated Smart Agriculture System with Capacitive Soil Sensor & Micro-Pump";
+    domainComponents = [
+      {
+        id: `dom-1-${seed}`,
+        name: "Capacitive Soil Moisture Sensor (Corrosion-Resistant)",
+        qty: "1 Pc",
+        costINR: 130,
+        purpose: "Measuring soil volumetric water content without electrode degradation",
+        alternativeComponent: "Resistive Soil Moisture Probe with LM393 Comparator",
+        checked: false
+      },
+      {
+        id: `dom-2-${seed}`,
+        name: "5V Mini Submersible DC Water Pump + Silicone Tubing",
+        qty: "1 Set",
+        costINR: 190,
+        purpose: "Automated precision water delivery upon low soil moisture threshold",
+        alternativeComponent: "12V Solenoid Water Valve Module",
+        checked: false
+      },
+      {
+        id: `dom-3-${seed}`,
+        name: "5V 1-Channel Optocoupler Relay Driver Module",
+        qty: "1 Pc",
+        costINR: 80,
+        purpose: "Safely switching high-current DC pump motor from MCU digital pin",
+        alternativeComponent: "IRF520 MOSFET Driver Module",
+        checked: false
+      }
+    ];
+  }
+  // 4. Smart Dustbin / Waste Management
+  else if (topic.includes("dustbin") || topic.includes("trash") || topic.includes("waste") || topic.includes("garbage")) {
+    title = "Touchless Smart Dustbin with Automated Servo Lid & Volume Sensor";
+    domainComponents = [
+      {
+        id: `dom-1-${seed}`,
+        name: "HC-SR04 Ultrasonic Ranging Module",
+        qty: "2 Pcs",
+        costINR: 180,
+        purpose: "Hand proximity detection and bin fill-level distance monitoring",
+        alternativeComponent: "Sharp GP2Y0A21YK0F IR Distance Sensor",
+        checked: false
+      },
+      {
+        id: `dom-2-${seed}`,
+        name: "SG90 Micro Servo Motor (1.8kg.cm)",
+        qty: "1 Pc",
+        costINR: 160,
+        purpose: "Automated 90-degree opening and closing of dustbin lid",
+        alternativeComponent: "MG996R High-Torque Metal Gear Servo",
+        checked: false
+      }
+    ];
+  }
+  // 5. Gas Leakage / Fire / Air Quality Security
+  else if (topic.includes("gas") || topic.includes("fire") || topic.includes("smoke") || topic.includes("pollution") || topic.includes("air")) {
+    title = "Industrial Multi-Gas Leakage & Fire Alert Security System";
+    domainComponents = [
+      {
+        id: `dom-1-${seed}`,
+        name: "MQ-2 / MQ-135 Air Quality & Hazardous Gas Sensor",
+        qty: "1 Pc",
+        costINR: 190,
+        purpose: "Detecting combustible gas, LPG, smoke, and CO concentration levels",
+        alternativeComponent: "MQ-5 Natural Gas & Methane Detector Probe",
+        checked: false
+      },
+      {
+        id: `dom-2-${seed}`,
+        name: "IR Flame Sensor Module (760nm - 1100nm)",
+        qty: "1 Pc",
+        costINR: 90,
+        purpose: "Immediate optical detection of naked fire flames and thermal radiation",
+        alternativeComponent: "Thermopile Non-Contact IR Sensor",
+        checked: false
+      },
+      {
+        id: `dom-3-${seed}`,
+        name: "Active Piezo Buzzer & Red/Green Warning LEDs",
+        qty: "1 Set",
+        costINR: 60,
+        purpose: "High-decibel acoustic alarm and optical visual danger alerts",
+        alternativeComponent: "12V Motor Siren Horn",
+        checked: false
+      }
+    ];
+  }
+  // 6. Patient Health / Medical
+  else if (topic.includes("health") || topic.includes("patient") || topic.includes("heart") || topic.includes("medical") || topic.includes("pulse")) {
+    title = "IoT Patient Health Telemetry System with Pulse Oximeter & Thermal Sensor";
+    domainComponents = [
+      {
+        id: `dom-1-${seed}`,
+        name: "MAX30102 Heart Rate & Pulse Oximeter (SpO2) Sensor",
+        qty: "1 Pc",
+        costINR: 320,
+        purpose: "Optical photoplethysmography measuring heart rate and blood oxygen saturation",
+        alternativeComponent: "Pulse Sensor Amp Module",
+        checked: false
+      },
+      {
+        id: `dom-2-${seed}`,
+        name: "DS18B20 Waterproof Digital Temperature Probe",
+        qty: "1 Pc",
+        costINR: 180,
+        purpose: "High-accuracy human body temperature measurement with 1-Wire interface",
+        alternativeComponent: "MLX90614 Contactless Medical IR Thermometer",
+        checked: false
+      }
+    ];
+  }
+  // 7. Home Automation / Security / Door Lock
+  else if (topic.includes("home") || topic.includes("door") || topic.includes("lock") || topic.includes("rfid") || topic.includes("security")) {
+    title = "RFID & Keypad Smart Door Access Control System with Solenoid Lock";
+    domainComponents = [
+      {
+        id: `dom-1-${seed}`,
+        name: "RC522 13.56MHz RFID Reader Module + Key Fobs",
+        qty: "1 Set",
+        costINR: 220,
+        purpose: "Contactless cryptographic keycard authentication for authorized entry",
+        alternativeComponent: "PN532 NFC Module Array",
+        checked: false
+      },
+      {
+        id: `dom-2-${seed}`,
+        name: "12V Micro Solenoid Door Lock Actuator Module",
+        qty: "1 Pc",
+        costINR: 380,
+        purpose: "Electromechanical deadbolt locking and unlocking mechanism",
+        alternativeComponent: "180 Degree High-Torque Servo Deadbolt",
+        checked: false
+      },
+      {
+        id: `dom-3-${seed}`,
+        name: "4x4 Matrix Membrane Keypad",
+        qty: "1 Pc",
+        costINR: 110,
+        purpose: "PIN passcode entry override and secondary authentication",
+        alternativeComponent: "Capacitive Touch Keypad TTP229",
+        checked: false
+      }
+    ];
+  }
+  // 8. Robot / Line Follower / Vehicle
+  else if (topic.includes("robot") || topic.includes("line") || topic.includes("car") || topic.includes("vehicle") || topic.includes("rover")) {
+    title = "Autonomous Line Following Robot with Dual IR Transducers & H-Bridge Driver";
+    domainComponents = [
+      {
+        id: `dom-1-${seed}`,
+        name: "TCRT5000 Dual IR Reflective Line Tracking Sensors",
+        qty: "1 Pair",
+        costINR: 110,
+        purpose: "Detecting surface contrast differences between black line and white ground",
+        alternativeComponent: "5-Channel IR Line Sensor Array Module",
+        checked: false
+      },
+      {
+        id: `dom-2-${seed}`,
+        name: "L298N Dual H-Bridge DC Motor Driver Board",
+        qty: "1 Pc",
+        costINR: 210,
+        purpose: "Bidirectional high-current motor drive and differential steering control",
+        alternativeComponent: "TB6612FNG Dual Motor Driver Carrier",
+        checked: false
+      },
+      {
+        id: `dom-3-${seed}`,
+        name: "TT Dual Shaft Gearbox Motors (200 RPM) + Wheels",
+        qty: "2 Sets",
+        costINR: 190,
+        purpose: "Mobile robotic chassis propulsion and differential steering",
+        alternativeComponent: "N20 Metal Micro Gear Motors",
+        checked: false
+      }
+    ];
+  }
+  // 9. Water Quality / Hydroponics / Pollution
+  else if (topic.includes("water") || topic.includes("tds") || topic.includes("ph") || topic.includes("hydroponic")) {
+    title = "IoT Smart Water Quality & TDS Analysis System with Analog Electrodes";
+    domainComponents = [
+      {
+        id: `dom-1-${seed}`,
+        name: "Analog Water TDS Meter Sensor Module (0-1000 ppm)",
+        qty: "1 Pc",
+        costINR: 380,
+        purpose: "Measuring total dissolved solids and water purity electrical conductivity",
+        alternativeComponent: "Turbidity Sensor Optical Clarity Probe",
+        checked: false
+      },
+      {
+        id: `dom-2-${seed}`,
+        name: "Analog pH Sensor Probe Kit (pH 0-14)",
+        qty: "1 Kit",
+        costINR: 720,
+        purpose: "Precision chemical acidity and alkalinity measurement in fluid",
+        alternativeComponent: "ORP Oxidation Reduction Potential Electrode Probe",
+        checked: false
+      }
+    ];
+  }
+  // 10. Fallback / Generic Topic
+  else {
+    const formattedTopic = topicRaw.trim().replace(/\b\w/g, c => c.toUpperCase());
+    title = `Microcontroller-Based ${formattedTopic} with Sensor Telemetry & Automation`;
+    domainComponents = [
+      {
+        id: `dom-1-${seed}`,
+        name: "HC-SR04 Ultrasonic / Analog Sensor Module",
+        qty: "1 Pc",
+        costINR: 150,
+        purpose: `Primary environmental transducer feedback for ${formattedTopic}`,
+        alternativeComponent: "VL53L0X Laser Ranging Transducer",
+        checked: false
+      },
+      {
+        id: `dom-2-${seed}`,
+        name: "5V Relay / Motor Actuator Module",
+        qty: "1 Pc",
+        costINR: 120,
+        purpose: `Automated output control mechanism for ${formattedTopic}`,
+        alternativeComponent: "PWM Transistor Switch Module",
+        checked: false
+      }
+    ];
+  }
+
+  // Domain Principles
+  const domainPrinciples: ScientificPrinciple[] = [
     {
-      title: "Transducer Signal Conditioning & Voltage Conversion",
-      explanation: "Sensors operate by converting physical parameters (light, temperature, pressure, sound) into proportional electrical resistance or voltage outputs. Operational amplifiers and ADC (Analog-to-Digital Converters) map these analog continuums into digital quantization steps.",
-      realWorldUsage: "Used extensively in industrial PLC automation, medical ECG monitors, and automotive engine control units (ECU)."
+      title: "Physical Transducer Signal Conditioning & ADC Quantization",
+      explanation: `Physical parameters in "${title}" are converted into proportional electrical voltages or resistances by specialized sensors. The ADC inside ${mcuName} converts these continuous analog signals into digital values for logic processing.`,
+      realWorldUsage: "Underpins industrial process control, automotive engine diagnostics, and medical monitoring devices."
     },
     {
-      title: "Pulse-Width Modulation (PWM) & Duty Cycle Power Control",
-      explanation: "Instead of delivering partial voltage, PWM rapidly switches a digital output between full ON (5V/3.3V) and full OFF (0V) at high frequencies. The ratio of active ON time to total pulse period (Duty Cycle) regulates effective average power delivered to motors or LEDs.",
-      realWorldUsage: "Core principle behind electric vehicle speed controllers, variable-frequency industrial drives, and LED dimmers."
+      title: "Pulse-Width Modulation (PWM) & Actuator Power Regulation",
+      explanation: "Instead of variable analog voltages, PWM switches digital pins rapidly between 0V and 5V. The duty cycle determines average power, controlling motor speed, servo angles, or LED illumination.",
+      realWorldUsage: "Standard power efficiency method used in electric vehicle motor controllers and solar inverter power stages."
     },
     {
-      title: "Closed-Loop Feedback Control System Dynamics",
-      explanation: `The system continuously samples sensor inputs, compares them against a programmed setpoint threshold, and modulates actuator outputs (${angleTag}) to minimize error.`,
-      realWorldUsage: "Applied in building HVAC climate thermostats, aircraft autopilot flight control, and automated chemical bioreactors."
+      title: `Closed-Loop Feedback Control System Execution (${angleTag})`,
+      explanation: `The microcontroller continuously samples input sensor data, calculates threshold deviations, and executes corrective output actions to maintain system stability under ${angleTag}.`,
+      realWorldUsage: "Applied in building HVAC thermostats, automated flight control, and industrial robotics."
     }
   ];
-}
 
-function getVivaQuestions(subject: string, topic: string, mcuName: string, angleTag: string, seed: number): VivaQuestion[] {
-  return [
+  // Domain Viva Questions
+  const domainViva: VivaQuestion[] = [
     {
       id: `viva-1-${seed}`,
-      question: `What is the core working principle of your project "${topic}" under the ${angleTag}?`,
-      answer: `The system senses real-world environmental physical parameters using specialized sensor transducers, conditions the electrical signal, feeds it into the ADC of ${mcuName}, and evaluates threshold logic to trigger appropriate actuators or alerts while logging data.`,
-      hint: "Explain the input-processing-output pipeline clearly."
+      question: `What is the core working principle of your project "${title}"?`,
+      answer: `The system collects physical inputs using specialized sensors, conditions the electrical signals, processes the data through the digital logic of ${mcuName}, and triggers corresponding actuators or alerts under the ${angleTag} paradigm.`,
+      hint: "Explain the input sensing -> logic calculation -> output actuation pipeline."
     },
     {
       id: `viva-2-${seed}`,
-      question: `Why did you select ${mcuName} instead of a standard analog circuit or a basic 555 timer chip?`,
-      answer: `${mcuName} offers programmable logic, multi-channel ADC/PWM pins, easy re-configurability without re-soldering, and support for digital communications protocols (I2C/SPI/UART), allowing advanced features like display output and threshold calibration.`,
-      hint: "Highlight flexibility, accuracy, and digital interface capabilities."
+      question: `Why did you select ${mcuName} for controlling "${title}"?`,
+      answer: `${mcuName} provides fast processing, multi-channel ADC/PWM GPIO pins, easy re-configurability via code without re-wiring, and reliable digital communication protocols like I2C and SPI.`,
+      hint: "Highlight flexibility, processing speed, and digital interface support."
     },
     {
       id: `viva-3-${seed}`,
-      question: "What is the purpose of placing a flyback diode across inductive relay/motor coils?",
-      answer: "When an inductive load is switched off rapidly, collapsing magnetic fields induce a high reverse voltage spike (Back-EMF). The flyback diode provides a safe dissipation path, protecting sensitive microcontroller transistors from voltage breakdown.",
-      hint: "Think about Lenz's Law and Back-EMF magnetic collapse."
+      question: "How do you protect sensitive microchip GPIO pins from inductive voltage spikes?",
+      answer: "We connect flyback diodes (e.g. 1N4007) across inductive loads like relays or motor coils. When power is cut, collapsing magnetic fields generate high reverse Back-EMF spikes, which the diode safely dissipates.",
+      hint: "Discuss Back-EMF magnetic collapse and flyback protection diodes."
     },
     {
       id: `viva-4-${seed}`,
-      question: "How do you handle sensor signal noise and false triggering in code?",
-      answer: "We employ digital filtering techniques such as Moving Average Filtering or hysteresis thresholds (setting separate upper ON and lower OFF trigger points) so transient spikes do not cause rapid chatter in actuators.",
-      hint: "Mention software hysteresis or exponential smoothing filters."
+      question: "How do you prevent false triggering and sensor noise in software?",
+      answer: "We implement software hysteresis (setting separate upper ON and lower OFF trigger limits) and digital moving average filtering so transient environmental spikes do not cause chatter.",
+      hint: "Mention hysteresis thresholds and digital moving average filters."
     },
     {
       id: `viva-5-${seed}`,
-      question: "If budget was increased by 2x, what hardware upgrades would you implement?",
-      answer: "We would upgrade to high-precision industrial sensors (e.g. LiDAR or capacitive stainless probes), add an ESP32 for cloud IoT telemetry, and incorporate an OLED graphical user interface with rechargeable lithium battery BMS backup.",
-      hint: "Discuss scalability, IoT cloud analytics, and precision hardware."
+      question: "If given a higher research budget, what advanced upgrades would you integrate?",
+      answer: "We would add an ESP32 micro-gateway for real-time cloud IoT dashboard telemetry, upgrade to industrial-grade calibrated sensors, and add a rechargeable Li-ion BMS battery backup.",
+      hint: "Discuss IoT cloud monitoring, industrial accuracy, and battery management."
     }
   ];
+
+  return { title, domainComponents, domainPrinciples, domainViva };
 }
