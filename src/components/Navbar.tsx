@@ -1,5 +1,21 @@
-import React from "react";
-import { Cpu, Bookmark, Sparkles, RefreshCw, Layers, Info, User } from "lucide-react";
+import React, { useState } from "react";
+import { 
+  Cpu, 
+  Bookmark, 
+  Sparkles, 
+  RefreshCw, 
+  Layers, 
+  Info, 
+  User, 
+  Lightbulb, 
+  LogOut, 
+  LogIn, 
+  ShieldCheck, 
+  CloudCheck, 
+  Award,
+  ChevronDown
+} from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import appIconUrl from "../assets/images/makermind_app_icon_1786532760729.jpg";
 
 interface NavbarProps {
@@ -7,6 +23,8 @@ interface NavbarProps {
   onOpenSaved: () => void;
   onOpenAbout: () => void;
   onOpenAboutMe: () => void;
+  onOpenPrompts: () => void;
+  onOpenAuth: () => void;
   onReset: () => void;
   aiStatus: "online" | "offline" | "checking";
 }
@@ -16,9 +34,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSaved,
   onOpenAbout,
   onOpenAboutMe,
+  onOpenPrompts,
+  onOpenAuth,
   onReset,
   aiStatus,
 }) => {
+  const { user, userProfile, signOutUser } = useAuth();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -41,19 +64,29 @@ export const Navbar: React.FC<NavbarProps> = ({
                 MAKERMIND
               </span>
               <span className="text-slate-500 font-normal text-[10px] ml-2.5 uppercase tracking-widest hidden sm:inline">
-                v2.5 Blueprint Engine
+                Exhibition Studio
               </span>
             </div>
             <p className="text-[11px] text-slate-400 hidden md:block uppercase tracking-wider font-semibold">
-              Dynamic STEM School & College Generator
+              STEM Blueprint & Prototype Builder
             </p>
           </div>
         </button>
 
-        {/* Right Status & Actions */}
-        <div className="flex items-center gap-2.5 text-xs font-semibold uppercase tracking-widest text-slate-400">
+        {/* Center / Right Status & Actions */}
+        <div className="flex items-center gap-2 sm:gap-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
+          {/* Exhibition Prompts Button */}
+          <button
+            onClick={onOpenPrompts}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500/15 to-emerald-500/15 hover:from-amber-500/25 hover:to-emerald-500/25 border border-amber-500/30 text-amber-300 hover:text-white transition-all cursor-pointer shadow-sm"
+            title="Browse Award-Winning Exhibition Prompts"
+          >
+            <Award className="w-4 h-4 text-amber-400" />
+            <span className="hidden sm:inline">Exhibition Prompts</span>
+          </button>
+
           {/* AI Engine Status Pill */}
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800">
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px]">
             <div className={`w-2 h-2 rounded-full ${
               aiStatus === "online" 
                 ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" 
@@ -70,41 +103,89 @@ export const Navbar: React.FC<NavbarProps> = ({
             </span>
           </div>
 
-          {/* About Me Trigger Button */}
-          <button
-            onClick={onOpenAboutMe}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-950/80 hover:bg-indigo-900/80 border border-indigo-800/80 text-indigo-300 hover:text-white transition-all cursor-pointer text-xs font-semibold"
-            title="About Me (Astha - astha5517o@gmail.com)"
-          >
-            <User className="w-4 h-4 text-emerald-400" />
-            <span>About Me</span>
-          </button>
-
-          {/* About Engine Trigger Button */}
-          <button
-            onClick={onOpenAbout}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all cursor-pointer text-xs font-semibold"
-            title="About MakerMind Engine Specs"
-          >
-            <Info className="w-4 h-4 text-indigo-400" />
-            <span className="hidden sm:inline">Engine</span>
-          </button>
-
           {/* Saved Blueprints Trigger */}
           <button
             onClick={onOpenSaved}
-            className="relative flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-slate-200 text-xs font-semibold transition-all shadow-sm cursor-pointer"
+            className="relative flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-200 text-xs font-semibold transition-all shadow-sm cursor-pointer"
           >
             <Bookmark className="w-4 h-4 text-emerald-400" />
-            <span className="hidden sm:inline">Saved</span>
+            <span className="hidden md:inline">Saved</span>
             {savedCount > 0 && (
-              <span className="ml-1 px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-bold text-xs">
+              <span className="px-1.5 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-bold text-[10px]">
                 {savedCount}
               </span>
             )}
           </button>
+
+          {/* Auth Button or User Profile Dropdown */}
+          {user ? (
+            <div className="relative">
+              <button
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-950/80 hover:bg-indigo-900/80 border border-indigo-500/40 text-slate-200 transition-all cursor-pointer"
+              >
+                <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-indigo-500 to-emerald-500 flex items-center justify-center text-white text-[11px] font-bold">
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt="" className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    (user.displayName || userProfile?.name || "S").charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div className="hidden sm:flex flex-col text-left">
+                  <span className="text-[11px] font-bold text-white leading-tight">
+                    {user.displayName || userProfile?.name || "Student"}
+                  </span>
+                  <span className="text-[9px] text-emerald-400 lowercase tracking-normal">
+                    Cloud Synced
+                  </span>
+                </div>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+
+              {/* Profile Dropdown Menu */}
+              {showProfileMenu && (
+                <div 
+                  className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-2 space-y-1 z-50 text-slate-200 animate-fadeIn"
+                  onClick={() => setShowProfileMenu(false)}
+                >
+                  <div className="p-2 border-b border-slate-800 text-left">
+                    <p className="text-xs font-bold text-white">{user.displayName || userProfile?.name || "Student Account"}</p>
+                    <p className="text-[10px] text-slate-400 lowercase truncate">{user.email || "Guest Scholar"}</p>
+                    {userProfile?.institution && (
+                      <p className="text-[10px] text-indigo-400 mt-1 truncate">{userProfile.institution}</p>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={onOpenAboutMe}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-800 text-left transition-colors"
+                  >
+                    <User className="w-4 h-4 text-emerald-400" />
+                    <span>My Scholar Profile</span>
+                  </button>
+
+                  <button
+                    onClick={signOutUser}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-rose-500/20 text-rose-300 text-left transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={onOpenAuth}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-all cursor-pointer text-xs font-semibold shadow-md shadow-indigo-600/20"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Sign In</span>
+            </button>
+          )}
         </div>
       </div>
     </header>
   );
 };
+

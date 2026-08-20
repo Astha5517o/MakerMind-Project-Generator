@@ -6,6 +6,7 @@ import {
   BudgetRange 
 } from "../types";
 import { PRESET_TOPICS, PresetTopic } from "../data/presetTopics";
+import { CURATED_EXHIBITION_PROMPTS } from "../data/exhibitionPrompts";
 import { 
   Sparkles, 
   GraduationCap, 
@@ -19,13 +20,16 @@ import {
   RefreshCw,
   Lightbulb,
   CheckCircle2,
-  Layers
+  Layers,
+  Award,
+  ArrowRight
 } from "lucide-react";
 
 interface InputFormProps {
   onSubmit: (inputs: GeneratorInputs, forceNewAngle: boolean) => void;
   isLoading: boolean;
   loadingMessage: string;
+  onOpenPrompts?: () => void;
 }
 
 const LEVELS: StudentLevel[] = [
@@ -77,6 +81,7 @@ export const InputForm: React.FC<InputFormProps> = ({
   onSubmit,
   isLoading,
   loadingMessage,
+  onOpenPrompts,
 }) => {
   const [level, setLevel] = useState<StudentLevel>("High School (Class 11-12)");
   const [subject, setSubject] = useState<SubjectArea>("Robotics & Electronics");
@@ -89,6 +94,13 @@ export const InputForm: React.FC<InputFormProps> = ({
     setSubject(preset.subject);
     setLevel(preset.level);
     setBudget(preset.budget);
+  };
+
+  const handleCuratedPromptSelect = (prompt: typeof CURATED_EXHIBITION_PROMPTS[0]) => {
+    setTopic(prompt.title);
+    setSubject(prompt.subject);
+    setLevel(prompt.level);
+    setBudget(prompt.budget);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -195,10 +207,34 @@ export const InputForm: React.FC<InputFormProps> = ({
 
         {/* 3. Project Topic / Keywords Input */}
         <div>
+          {/* Exhibition Prompts Discovery Banner */}
+          {onOpenPrompts && (
+            <div className="mb-4 p-3.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-slate-900 to-emerald-500/10 border border-amber-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                  <Award className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white">Need an Award-Winning Exhibition Idea?</div>
+                  <div className="text-[11px] text-slate-400">Explore curated student science fair projects with working models & judge pitches</div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={onOpenPrompts}
+                className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0 cursor-pointer"
+              >
+                <span>Browse Prompts</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-3 flex items-center justify-between">
             <span className="flex items-center gap-2">
               <Lightbulb className="w-4 h-4 text-amber-400" />
-              Project Keywords
+              Project Concept or Topic
             </span>
             <span className="text-[11px] text-slate-500 font-normal">e.g. Smart Water Grid</span>
           </label>
@@ -206,24 +242,27 @@ export const InputForm: React.FC<InputFormProps> = ({
             type="text"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="e.g. Solar Powered Rover, IoT Air Purifier, Smart Traffic System"
+            placeholder="e.g. Solar Powered Rover, IoT Air Purifier, Smart Traffic System, LPG Leakage Alert"
             className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3.5 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors text-sm"
             required
           />
 
-          {/* Quick Presets Pills */}
-          <div className="mt-3">
-            <div className="text-[11px] text-slate-500 mb-2 font-bold uppercase tracking-widest">Suggested Keywords:</div>
-            <div className="flex flex-wrap gap-2">
-              {PRESET_TOPICS.map((preset) => (
+          {/* Quick Exhibition Ideas Pills */}
+          <div className="mt-3 space-y-2">
+            <div className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
+              <Award className="w-3 h-3 text-amber-400" />
+              <span>Suggested Science Exhibition Ideas:</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {CURATED_EXHIBITION_PROMPTS.slice(0, 6).map((prompt) => (
                 <button
-                  key={preset.title}
+                  key={prompt.id}
                   type="button"
-                  onClick={() => handlePresetSelect(preset)}
-                  className="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 text-xs transition-all flex items-center gap-1.5"
+                  onClick={() => handleCuratedPromptSelect(prompt)}
+                  className="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-indigo-950/60 border border-slate-800 hover:border-indigo-500/40 text-slate-300 hover:text-white text-xs transition-all flex items-center gap-1.5 text-left group"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                  {preset.title}
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 group-hover:scale-125 transition-transform" />
+                  <span className="truncate max-w-[220px]">{prompt.title}</span>
                 </button>
               ))}
             </div>

@@ -73,8 +73,8 @@ export function generateOfflineBlueprint(
   const displayIndex = (seed + 3) % DISPLAY_UNITS.length;
   const display = DISPLAY_UNITS[displayIndex];
 
-  // Generate topic & domain specific components and title
-  const { title, domainComponents, domainPrinciples, domainViva } = getTopicCustomizations(topicClean, inputs.subject, mcu.name, angleObj.tag, seed);
+  // Generate topic & domain specific components, title, and tailored image prompts
+  const { title, domainComponents, domainPrinciples, domainViva, domainImagePrompts } = getTopicCustomizations(topicClean, inputs.subject, mcu.name, angleObj.tag, seed);
 
   const materials: MaterialItem[] = [
     {
@@ -211,6 +211,48 @@ export function generateOfflineBlueprint(
       "Integrate an SD card logging shield to record continuous long-term sensor datasets.",
       "Connect an IoT web dashboard (Blynk / Adafruit IO) to monitor real-time graphs remotely."
     ],
+    imagePrompts: domainImagePrompts,
+    exhibitionDossier: {
+      problemStatement: `Conventional setups in ${topicClean} suffer from inefficiency, manual dependency, and lack of real-time sensory telemetry during real-world operation.`,
+      hypothesis: `If ${mcu.name} is configured with automated closed-loop sensor feedback, the system will respond within 150ms, improving reliability and reducing manual intervention by over 80%.`,
+      modelType: "Working Interactive Prototype",
+      displayBoardGuide: {
+        abstract: `This project presents an empirical, low-cost implementation of "${title}" tailored for science fairs and exhibitions. It demonstrates practical STEM principles through interactive physical testing.`,
+        methodology: `The working model incorporates ${domainComponents[0]?.name || "Sensor Transducers"} interfaced with ${mcu.name} through calibrated signal conditioning and automated actuation.`,
+        keyObservations: `Tests demonstrated consistent sensor trigger accuracy under diverse ambient lighting/noise conditions with an average current consumption under 250mA.`,
+        realWorldImpact: `Provides an affordable (< ₹${estimatedTotalCostINR}), scalable solution for grass-root automation and educational demonstration.`
+      },
+      twoMinuteJudgePitch: `Respected Judges, our science exhibition project is titled "${title}". We addressed the pressing challenge of ${topicClean}. Our prototype uses ${mcu.name} combined with ${domainComponents[0]?.name || "smart sensors"} to create an automated, real-time response system. As you can observe in this live test...`,
+      modelConstructionTips: [
+        "Base Frame: Mount all components on a rigid 5mm white foam/sunboard (30cm x 40cm) for neat presentation.",
+        "Wiring Aesthetics: Use colored spiral wire wrap and zip-ties to bundle jumpers; clearly label VCC, GND, and Signal pins.",
+        "Indicator Status: Install bright 5mm status LEDs (Green = System Ready, Red = Alert Triggered) visible from 5 meters.",
+        "Interactive Trigger: Place an easily accessible push button or sensor target zone so judges can test the working model themselves."
+      ],
+      safetyChecklist: [
+        "Include a central DC rocker power switch with an inline 500mA fast-blow fuse.",
+        "Insulate all 5V/12V exposed solder joints with heat-shrink tubing.",
+        "Provide a backup 9V / 18650 battery pack in case exhibition table power sockets are unavailable."
+      ]
+    },
+    studentNotes: `Science Exhibition Preparation Notes for ${title}:\n- Tested sensor calibration with 5 trial runs.\n- Chart paper layout finalized with Problem, Hypothesis, Flowchart, and BOM.\n- Ready for live judge demonstration.`,
+    studentLogs: [
+      {
+        id: `log-1-${seed}`,
+        timestamp: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        title: "Baseline Sensor Calibration & Power Rails Test",
+        notes: "Verified steady 5.02V rail voltage. Zero-offset threshold set in firmware.",
+        sensorReadings: "VCC: 5.02V | Idle Current: 42mA | Signal Delay: ~12ms"
+      }
+    ],
+    exhibitionChecklist: {
+      "workingModelFunctional": true,
+      "displayBoardPrepared": false,
+      "vivaQuestionsMemorized": true,
+      "circuitDiagramPrinted": false,
+      "backupBatteryCharged": true,
+      "twoMinutePitchRehearsed": false
+    },
     isAiGenerated: false
   };
 }
@@ -228,13 +270,23 @@ function getTopicCustomizations(
   let title = "";
   let domainComponents: MaterialItem[] = [];
 
+  let domainImagePrompts: Array<{
+    id: string;
+    style: "3D Physical Prototype Model" | "Exploded CAD & Hardware Assembly" | "Science Exhibition Booth & Display Board" | "Cutaway Realistic Circuit & Transducer";
+    title: string;
+    prompt: string;
+    negativePrompt?: string;
+    recommendedAspect: "16:9" | "4:3" | "1:1";
+    keyElementsHighlighted: string[];
+  }> = [];
+
   // 1. Solar Tracker
-  if (topic.includes("solar") || topic.includes("sun")) {
-    title = "Dual-Axis Smart Solar Tracking Engine with LDR & Servo Control";
+  if (topic.includes("solar") || topic.includes("sun") || topic.includes("photovoltaic")) {
+    title = "Dual-Axis Smart Solar Tracking Engine with LDR Array & Servo Control";
     domainComponents = [
       {
         id: `dom-1-${seed}`,
-        name: "LDR Light Dependent Resistor Module Array (4 Pcs)",
+        name: "LDR Light Dependent Resistor Module Array (4 Quadrants)",
         qty: "1 Set",
         costINR: 120,
         purpose: "Detecting differential ambient light intensity for solar tracking",
@@ -243,7 +295,7 @@ function getTopicCustomizations(
       },
       {
         id: `dom-2-${seed}`,
-        name: "SG90 Micro Servo Motors (2 Pcs - Pan/Tilt Axis)",
+        name: "SG90 / MG90S Metal Gear Micro Servo Motors (Pan/Tilt Axis)",
         qty: "2 Pcs",
         costINR: 320,
         purpose: "Dual-axis angular mechanical positioning of solar panel",
@@ -252,10 +304,10 @@ function getTopicCustomizations(
       },
       {
         id: `dom-3-${seed}`,
-        name: "6V 2W Monocrystalline Solar Panel + Voltage Sensor Module",
+        name: "6V 2W Monocrystalline Solar Panel + INA219 Current Sensor",
         qty: "1 Set",
         costINR: 280,
-        purpose: "Energy generation and real-time output voltage telemetry",
+        purpose: "Energy generation and real-time output voltage/current telemetry",
         alternativeComponent: "5V Flexible Solar Cell Matrix",
         checked: false
       }
@@ -263,14 +315,14 @@ function getTopicCustomizations(
   } 
   // 2. Blind Stick / Visually Impaired Navigation
   else if (topic.includes("blind") || topic.includes("visually") || topic.includes("stick") || topic.includes("obstacle")) {
-    title = "Microcontroller Smart Blind Stick with Ultrasonic Ranging & Haptic Feedback";
+    title = "Microcontroller Smart Blind Walking Stick with Ultrasonic Sensing & Haptic Feedback";
     domainComponents = [
       {
         id: `dom-1-${seed}`,
-        name: "HC-SR04 Ultrasonic Distance Sensor Module",
+        name: "HC-SR04 Ultrasonic Distance Sensor Module (Dual Head/Knee Mount)",
         qty: "2 Pcs",
         costINR: 180,
-        purpose: "Detecting low-lying and head-height obstacles up to 400cm",
+        purpose: "Detecting low-lying potholes and head-height obstacles up to 400cm",
         alternativeComponent: "VL53L0X Time-of-Flight Laser Distance Sensor",
         checked: false
       },
@@ -279,28 +331,28 @@ function getTopicCustomizations(
         name: "Coin Vibration Motor (3V) & High-Decibel Active Buzzer",
         qty: "1 Set",
         costINR: 90,
-        purpose: "Delivering haptic tactile vibration and acoustic distance warnings",
+        purpose: "Delivering haptic tactile vibration to the handle and acoustic distance warnings",
         alternativeComponent: "PWM Audio Transducer Speaker",
         checked: false
       },
       {
         id: `dom-3-${seed}`,
-        name: "Water Rain Sensor PCB Module",
+        name: "Water Rain Puddle Conductivity Sensor PCB Probe",
         qty: "1 Pc",
         costINR: 70,
-        purpose: "Alerting the user to puddles, wet surfaces, or rain",
+        purpose: "Alerting the user to puddles, wet slippery surfaces, or rain",
         alternativeComponent: "Soil Moisture Conductivity Probe",
         checked: false
       }
     ];
   }
-  // 3. Irrigation / Agriculture / Plant
-  else if (topic.includes("irrigation") || topic.includes("soil") || topic.includes("plant") || topic.includes("agriculture") || topic.includes("farm")) {
-    title = "Automated Smart Agriculture System with Capacitive Soil Sensor & Micro-Pump";
+  // 3. Irrigation / Agriculture / Plant / Hydroponics
+  else if (topic.includes("irrigation") || topic.includes("soil") || topic.includes("plant") || topic.includes("agriculture") || topic.includes("farm") || topic.includes("hydroponic")) {
+    title = "Automated Precision Agriculture & Drip Irrigation System with Capacitive Moisture Sensor";
     domainComponents = [
       {
         id: `dom-1-${seed}`,
-        name: "Capacitive Soil Moisture Sensor (Corrosion-Resistant)",
+        name: "Capacitive Soil Moisture Sensor (Corrosion-Resistant V1.2)",
         qty: "1 Pc",
         costINR: 130,
         purpose: "Measuring soil volumetric water content without electrode degradation",
@@ -309,7 +361,7 @@ function getTopicCustomizations(
       },
       {
         id: `dom-2-${seed}`,
-        name: "5V Mini Submersible DC Water Pump + Silicone Tubing",
+        name: "5V Mini Submersible DC Water Pump + Silicone Delivery Tubing",
         qty: "1 Set",
         costINR: 190,
         purpose: "Automated precision water delivery upon low soil moisture threshold",
@@ -327,202 +379,300 @@ function getTopicCustomizations(
       }
     ];
   }
-  // 4. Smart Dustbin / Waste Management
+  // 4. Smart Dustbin / Waste Segregation
   else if (topic.includes("dustbin") || topic.includes("trash") || topic.includes("waste") || topic.includes("garbage")) {
-    title = "Touchless Smart Dustbin with Automated Servo Lid & Volume Sensor";
+    title = "Touchless Smart Dustbin with Automated Servo Lid & Ultrasonic Volume Telemetry";
     domainComponents = [
       {
         id: `dom-1-${seed}`,
-        name: "HC-SR04 Ultrasonic Ranging Module",
+        name: "HC-SR04 Ultrasonic Distance Sensor Module",
         qty: "2 Pcs",
         costINR: 180,
-        purpose: "Hand proximity detection and bin fill-level distance monitoring",
+        purpose: "Front proximity sensing for touchless lid opening and interior fill-level monitoring",
         alternativeComponent: "Sharp GP2Y0A21YK0F IR Distance Sensor",
         checked: false
       },
       {
         id: `dom-2-${seed}`,
-        name: "SG90 Micro Servo Motor (1.8kg.cm)",
+        name: "SG90 / MG995 High-Torque Servo Motor",
         qty: "1 Pc",
         costINR: 160,
-        purpose: "Automated 90-degree opening and closing of dustbin lid",
-        alternativeComponent: "MG996R High-Torque Metal Gear Servo",
+        purpose: "Smooth 90-degree automated opening and closing of the dustbin flap",
+        alternativeComponent: "DC Gear Motor with Cam Mechanism",
         checked: false
       }
     ];
   }
-  // 5. Gas Leakage / Fire / Air Quality Security
-  else if (topic.includes("gas") || topic.includes("fire") || topic.includes("smoke") || topic.includes("pollution") || topic.includes("air")) {
-    title = "Industrial Multi-Gas Leakage & Fire Alert Security System";
+  // 5. Gas Leakage / Fire / Air Quality / Smoke
+  else if (topic.includes("gas") || topic.includes("fire") || topic.includes("smoke") || topic.includes("lpg") || topic.includes("pollution") || topic.includes("air")) {
+    title = "IoT Hazardous LPG Gas Leakage & Fire Alarm Safety System";
     domainComponents = [
       {
         id: `dom-1-${seed}`,
-        name: "MQ-2 / MQ-135 Air Quality & Hazardous Gas Sensor",
+        name: "MQ-2 / MQ-6 Combustible LPG & Methane Gas Sensor",
         qty: "1 Pc",
         costINR: 190,
-        purpose: "Detecting combustible gas, LPG, smoke, and CO concentration levels",
-        alternativeComponent: "MQ-5 Natural Gas & Methane Detector Probe",
+        purpose: "Detecting gas concentration in PPM with internal SnO2 heating coil",
+        alternativeComponent: "MQ-135 Hazardous Air Quality Sensor",
         checked: false
       },
       {
         id: `dom-2-${seed}`,
-        name: "IR Flame Sensor Module (760nm - 1100nm)",
+        name: "Infrared Optical Flame Detection Sensor Module (760nm-1100nm)",
         qty: "1 Pc",
         costINR: 90,
-        purpose: "Immediate optical detection of naked fire flames and thermal radiation",
+        purpose: "Instant optical detection of open flame radiation within 100cm",
         alternativeComponent: "Thermopile Non-Contact IR Sensor",
         checked: false
       },
       {
         id: `dom-3-${seed}`,
-        name: "Active Piezo Buzzer & Red/Green Warning LEDs",
+        name: "High-Decibel Active Alarm Buzzer & High-Output Exhaust DC Fan",
         qty: "1 Set",
-        costINR: 60,
-        purpose: "High-decibel acoustic alarm and optical visual danger alerts",
-        alternativeComponent: "12V Motor Siren Horn",
+        costINR: 140,
+        purpose: "Acoustic emergency alert and automatic room gas ventilation",
+        alternativeComponent: "12V Solenoid Gas Cut-off Valve",
         checked: false
       }
     ];
   }
-  // 6. Patient Health / Medical
-  else if (topic.includes("health") || topic.includes("patient") || topic.includes("heart") || topic.includes("medical") || topic.includes("pulse")) {
-    title = "IoT Patient Health Telemetry System with Pulse Oximeter & Thermal Sensor";
+  // 6. Hydraulic Robotic Arm / Mechanics
+  else if (topic.includes("hydraulic") || topic.includes("arm") || topic.includes("crane") || topic.includes("pneumatic")) {
+    title = "Multi-Axis Syringe Hydraulic Robotic Arm with Fluid Mechanics & Gripper";
     domainComponents = [
       {
         id: `dom-1-${seed}`,
-        name: "MAX30102 Heart Rate & Pulse Oximeter (SpO2) Sensor",
+        name: "Medical-Grade Polypropylene Luer Lock Syringes (10ml & 20ml x 8 Pcs)",
+        qty: "1 Kit",
+        costINR: 160,
+        purpose: "Master-slave hydraulic cylinders transmitting fluid pressure via Pascal's Law",
+        alternativeComponent: "Pneumatic Miniature Air Cylinders",
+        checked: false
+      },
+      {
+        id: `dom-2-${seed}`,
+        name: "Non-Toxic Colored Fluid & Flexible Silicone Hydraulic Tubing (2 Meters)",
+        qty: "1 Set",
+        costINR: 90,
+        purpose: "Closed-loop hydrostatic pressure transfer medium with color-coded axes",
+        alternativeComponent: "Mineral Oil Hydraulic Medium",
+        checked: false
+      },
+      {
+        id: `dom-3-${seed}`,
+        name: "Laser-Cut Acrylic / MDF Multi-Linkage Arm Chassis & End-Effector Gripper",
+        qty: "1 Kit",
+        costINR: 350,
+        purpose: "3-DOF mechanical skeleton enabling base rotation, elbow lift, and claw grasping",
+        alternativeComponent: "3D Printed PLA Mechanical Links",
+        checked: false
+      }
+    ];
+  }
+  // 7. Seismograph / Earthquake Alarm
+  else if (topic.includes("earthquake") || topic.includes("seismic") || topic.includes("vibration") || topic.includes("accelerometer")) {
+    title = "High-Sensitivity Digital Seismograph & Seismic Wave Early Warning System";
+    domainComponents = [
+      {
+        id: `dom-1-${seed}`,
+        name: "ADXL345 3-Axis Digital Accelerometer / SW-420 Vibration Sensor",
+        qty: "1 Pc",
+        costINR: 220,
+        purpose: "High-resolution measurement of P-wave ground acceleration (±16g)",
+        alternativeComponent: "Piezoelectric Vibration Film Element",
+        checked: false
+      },
+      {
+        id: `dom-2-${seed}`,
+        name: "Suspended Inertial Mass Pendulum + Laser Reflection Transducer",
+        qty: "1 Kit",
+        costINR: 140,
+        purpose: "Physical mechanical inertial reference for analog seismic oscillation",
+        alternativeComponent: "Electromagnetic Geophone Coil",
+        checked: false
+      },
+      {
+        id: `dom-3-${seed}`,
+        name: "Emergency Strobe LED + High-Intensity Alarm Horn",
+        qty: "1 Set",
+        costINR: 110,
+        purpose: "Immediate acoustic and visual emergency evacuation alert",
+        alternativeComponent: "Wireless LoRa Broadcast Module",
+        checked: false
+      }
+    ];
+  }
+  // 8. Water Filtration / Purification
+  else if (topic.includes("water filter") || topic.includes("purifier") || topic.includes("filtration") || topic.includes("clean water")) {
+    title = "Multi-Stage Eco Water Filtration System with Activated Carbon & UV Sterilization";
+    domainComponents = [
+      {
+        id: `dom-1-${seed}`,
+        name: "Graded Multi-Stage Filter Media (Fine Sand, Gravel, Zeolite, Activated Carbon)",
+        qty: "1 Set",
+        costINR: 240,
+        purpose: "Physical adsorption of heavy metals, chlorine, odors, and particulate sediment",
+        alternativeComponent: "Ultrafiltration Hollow Fiber Membrane",
+        checked: false
+      },
+      {
+        id: `dom-2-${seed}`,
+        name: "254nm Ultraviolet (UV-C) Germicidal Sterilizer LED Module",
         qty: "1 Pc",
         costINR: 320,
-        purpose: "Optical photoplethysmography measuring heart rate and blood oxygen saturation",
-        alternativeComponent: "Pulse Sensor Amp Module",
-        checked: false
-      },
-      {
-        id: `dom-2-${seed}`,
-        name: "DS18B20 Waterproof Digital Temperature Probe",
-        qty: "1 Pc",
-        costINR: 180,
-        purpose: "High-accuracy human body temperature measurement with 1-Wire interface",
-        alternativeComponent: "MLX90614 Contactless Medical IR Thermometer",
-        checked: false
-      }
-    ];
-  }
-  // 7. Home Automation / Security / Door Lock
-  else if (topic.includes("home") || topic.includes("door") || topic.includes("lock") || topic.includes("rfid") || topic.includes("security")) {
-    title = "RFID & Keypad Smart Door Access Control System with Solenoid Lock";
-    domainComponents = [
-      {
-        id: `dom-1-${seed}`,
-        name: "RC522 13.56MHz RFID Reader Module + Key Fobs",
-        qty: "1 Set",
-        costINR: 220,
-        purpose: "Contactless cryptographic keycard authentication for authorized entry",
-        alternativeComponent: "PN532 NFC Module Array",
-        checked: false
-      },
-      {
-        id: `dom-2-${seed}`,
-        name: "12V Micro Solenoid Door Lock Actuator Module",
-        qty: "1 Pc",
-        costINR: 380,
-        purpose: "Electromechanical deadbolt locking and unlocking mechanism",
-        alternativeComponent: "180 Degree High-Torque Servo Deadbolt",
+        purpose: "Disrupting bacterial and viral DNA for pathogen-free purification",
+        alternativeComponent: "Ozone Gas Generator Tube",
         checked: false
       },
       {
         id: `dom-3-${seed}`,
-        name: "4x4 Matrix Membrane Keypad",
-        qty: "1 Pc",
-        costINR: 110,
-        purpose: "PIN passcode entry override and secondary authentication",
-        alternativeComponent: "Capacitive Touch Keypad TTP229",
-        checked: false
-      }
-    ];
-  }
-  // 8. Robot / Line Follower / Vehicle
-  else if (topic.includes("robot") || topic.includes("line") || topic.includes("car") || topic.includes("vehicle") || topic.includes("rover")) {
-    title = "Autonomous Line Following Robot with Dual IR Transducers & H-Bridge Driver";
-    domainComponents = [
-      {
-        id: `dom-1-${seed}`,
-        name: "TCRT5000 Dual IR Reflective Line Tracking Sensors",
-        qty: "1 Pair",
-        costINR: 110,
-        purpose: "Detecting surface contrast differences between black line and white ground",
-        alternativeComponent: "5-Channel IR Line Sensor Array Module",
-        checked: false
-      },
-      {
-        id: `dom-2-${seed}`,
-        name: "L298N Dual H-Bridge DC Motor Driver Board",
-        qty: "1 Pc",
-        costINR: 210,
-        purpose: "Bidirectional high-current motor drive and differential steering control",
-        alternativeComponent: "TB6612FNG Dual Motor Driver Carrier",
-        checked: false
-      },
-      {
-        id: `dom-3-${seed}`,
-        name: "TT Dual Shaft Gearbox Motors (200 RPM) + Wheels",
-        qty: "2 Sets",
-        costINR: 190,
-        purpose: "Mobile robotic chassis propulsion and differential steering",
-        alternativeComponent: "N20 Metal Micro Gear Motors",
-        checked: false
-      }
-    ];
-  }
-  // 9. Water Quality / Hydroponics / Pollution
-  else if (topic.includes("water") || topic.includes("tds") || topic.includes("ph") || topic.includes("hydroponic")) {
-    title = "IoT Smart Water Quality & TDS Analysis System with Analog Electrodes";
-    domainComponents = [
-      {
-        id: `dom-1-${seed}`,
-        name: "Analog Water TDS Meter Sensor Module (0-1000 ppm)",
-        qty: "1 Pc",
-        costINR: 380,
-        purpose: "Measuring total dissolved solids and water purity electrical conductivity",
-        alternativeComponent: "Turbidity Sensor Optical Clarity Probe",
-        checked: false
-      },
-      {
-        id: `dom-2-${seed}`,
-        name: "Analog pH Sensor Probe Kit (pH 0-14)",
+        name: "Analog TDS Purity Probe & Turbidity Clarity Sensor",
         qty: "1 Kit",
-        costINR: 720,
-        purpose: "Precision chemical acidity and alkalinity measurement in fluid",
-        alternativeComponent: "ORP Oxidation Reduction Potential Electrode Probe",
+        costINR: 390,
+        purpose: "Real-time verification of post-filtration water electrical conductivity and clarity",
+        alternativeComponent: "Conductivity Bridge Cell",
         checked: false
       }
     ];
   }
-  // 10. Fallback / Generic Topic
+  // 9. Smart Traffic / Speed Radar
+  else if (topic.includes("traffic") || topic.includes("speed") || topic.includes("radar") || topic.includes("road")) {
+    title = "Smart Density-Based Traffic Management & Doppler Speed Radar System";
+    domainComponents = [
+      {
+        id: `dom-1-${seed}`,
+        name: "HB100 10.525GHz Microwave Doppler Radar Sensor Module",
+        qty: "1 Pc",
+        costINR: 320,
+        purpose: "Non-contact measurement of moving vehicle speed via Doppler frequency shift",
+        alternativeComponent: "Dual Laser Break-Beam Infrared Gates",
+        checked: false
+      },
+      {
+        id: `dom-2-${seed}`,
+        name: "4-Way Traffic Signal LED Light Modules (Red, Yellow, Green x 4)",
+        qty: "1 Set",
+        costINR: 180,
+        purpose: "Dynamic signal duration regulation based on lane vehicular queue density",
+        alternativeComponent: "WS2812B RGB Addressable Signal Tower",
+        checked: false
+      },
+      {
+        id: `dom-3-${seed}`,
+        name: "Lane Proximity IR Density Sensor Cluster",
+        qty: "4 Pairs",
+        costINR: 160,
+        purpose: "Detecting vehicle backup queue length on all four intersection arms",
+        alternativeComponent: "Inductive Loop Ground Coil Simulator",
+        checked: false
+      }
+    ];
+  }
+  // 10. Patient Health / Medical / Pulse
+  else if (topic.includes("health") || topic.includes("patient") || topic.includes("heart") || topic.includes("medical") || topic.includes("pulse")) {
+    title = "IoT Patient Vital Telemetry Station with Pulse Oximeter & Medical IR Thermometer";
+    domainComponents = [
+      {
+        id: `dom-1-${seed}`,
+        name: "MAX30102 Optical Heart Rate & SpO2 Blood Oxygen Sensor",
+        qty: "1 Pc",
+        costINR: 320,
+        purpose: "Photoplethysmography monitoring of pulse rate and arterial hemoglobin oxygenation",
+        alternativeComponent: "Analog Pulse Sensor Amp Module",
+        checked: false
+      },
+      {
+        id: `dom-2-${seed}`,
+        name: "MLX90614 Contactless Infrared Medical Body Temperature Sensor",
+        qty: "1 Pc",
+        costINR: 480,
+        purpose: "Instant optical forehead and skin thermal measurement with I2C precision",
+        alternativeComponent: "DS18B20 Waterproof Digital Probe",
+        checked: false
+      }
+    ];
+  }
+  // 11. Fallback / Custom Domain-Aligned Topic
   else {
     const formattedTopic = topicRaw.trim().replace(/\b\w/g, c => c.toUpperCase());
-    title = `Microcontroller-Based ${formattedTopic} with Sensor Telemetry & Automation`;
+    title = `Advanced ${formattedTopic} STEM Model with Smart Transducers & Telemetry`;
     domainComponents = [
       {
         id: `dom-1-${seed}`,
-        name: "HC-SR04 Ultrasonic / Analog Sensor Module",
+        name: `Calibrated Transducer Sensor Module for ${formattedTopic}`,
         qty: "1 Pc",
-        costINR: 150,
-        purpose: `Primary environmental transducer feedback for ${formattedTopic}`,
-        alternativeComponent: "VL53L0X Laser Ranging Transducer",
+        costINR: 190,
+        purpose: `Detecting primary environmental parameter and physical input for ${formattedTopic}`,
+        alternativeComponent: "Precision Analog Transducer Probe",
         checked: false
       },
       {
         id: `dom-2-${seed}`,
-        name: "5V Relay / Motor Actuator Module",
+        name: `Automated Output Actuator / Driver Module for ${formattedTopic}`,
         qty: "1 Pc",
-        costINR: 120,
-        purpose: `Automated output control mechanism for ${formattedTopic}`,
-        alternativeComponent: "PWM Transistor Switch Module",
+        costINR: 160,
+        purpose: `Executing mechanical, thermal, or electrical response for ${formattedTopic}`,
+        alternativeComponent: "Solid State Relay / MOSFET Switch",
         checked: false
       }
     ];
   }
+
+  // Generate 4 tailored Image Creation Prompts for this exact topic & title
+  domainImagePrompts = [
+    {
+      id: `img-prompt-1-${seed}`,
+      style: "3D Physical Prototype Model",
+      title: "Physical Working Prototype Model (Exhibition Ready)",
+      prompt: `A hyper-realistic studio product photograph of a working STEM student exhibition prototype: "${title}". Mounted on a clean white 5mm acrylic baseboard with rounded edges. Clearly visible components include ${domainComponents.map(m => m.name.split('(')[0].trim()).join(", ")}, ${mcuName}, neat spiral-wrapped wiring, glowing status LEDs, illuminated OLED display showing live data. Soft overhead lab lighting, crisp macro depth of field, 8k resolution, clean background.`,
+      recommendedAspect: "16:9",
+      keyElementsHighlighted: [
+        "Clean Acrylic Baseboard & Mounting",
+        domainComponents[0]?.name.split('(')[0].trim() || "Main Sensor",
+        mcuName,
+        "Color-coded Cable Harness & OLED"
+      ]
+    },
+    {
+      id: `img-prompt-2-${seed}`,
+      style: "Exploded CAD & Hardware Assembly",
+      title: "Exploded 3D Engineering & CAD Assembly Schematic",
+      prompt: `An exploded isometric 3D CAD technical rendering of "${title}". Shows the outer translucent acrylic chassis, structural standoffs, PCB board with ${mcuName}, ${domainComponents[0]?.name.split('(')[0].trim()}, mechanical linkages, battery bay, and fastening screws floating in aligned axis. Clean technical blueprint background with measurement dimension lines and component callout labels.`,
+      recommendedAspect: "16:9",
+      keyElementsHighlighted: [
+        "Exploded Axis Breakdown",
+        "Translucent Enclosure",
+        "Hardware Fasteners & Standoffs",
+        "PCB Trace Alignment"
+      ]
+    },
+    {
+      id: `img-prompt-3-${seed}`,
+      style: "Science Exhibition Booth & Display Board",
+      title: "Science Fair Award-Winning Demonstration Booth",
+      prompt: `A vibrant, high-energy photo of a high-school / college science exhibition competition booth featuring "${title}". In the foreground, the working physical model is active with demonstration lights and sample test items. In the background, a neat 3-panel trifold display poster board with title "${title}", hypothesis, circuit diagram, and graphs. Bright exhibition hall lighting, award-winning student STEM atmosphere.`,
+      recommendedAspect: "16:9",
+      keyElementsHighlighted: [
+        "3-Panel Trifold Poster Board",
+        "Active Working Tabletop Model",
+        "Science Fair Judging Setup",
+        "Observation Charts"
+      ]
+    },
+    {
+      id: `img-prompt-4-${seed}`,
+      style: "Cutaway Realistic Circuit & Transducer",
+      title: "Close-Up Circuitry & Transducer Interface",
+      prompt: `A detailed macro close-up view focusing on the primary sensor and micro-controller interface of "${title}". Shows ${domainComponents[0]?.name.split('(')[0].trim()} wired with gold-plated pins, surface-mount resistors, miniature power regulator, and active status indicator LEDs. Beautiful bokeh, clean electronics lab photography.`,
+      recommendedAspect: "4:3",
+      keyElementsHighlighted: [
+        "Macro Sensor Detail",
+        "IC Pin Interconnects",
+        "SMD Component Traces",
+        "Indicator LED Glow"
+      ]
+    }
+  ];
 
   // Domain Principles
   const domainPrinciples: ScientificPrinciple[] = [
@@ -577,5 +727,5 @@ function getTopicCustomizations(
     }
   ];
 
-  return { title, domainComponents, domainPrinciples, domainViva };
+  return { title, domainComponents, domainPrinciples, domainViva, domainImagePrompts };
 }

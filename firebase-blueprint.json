@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile and student academic details",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "institution": { "type": "string" },
+        "studentLevel": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "email"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Saved STEM project blueprint and exhibition prototype dossier",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "angleTag": { "type": "string" },
+        "overview": { "type": "string" },
+        "difficulty": { "type": "string" },
+        "buildTime": { "type": "string" },
+        "budgetCategory": { "type": "string" },
+        "estimatedTotalCostINR": { "type": "number" },
+        "level": { "type": "string" },
+        "subject": { "type": "string" },
+        "topicKeyword": { "type": "string" },
+        "materials": { "type": "array" },
+        "toolsRequired": { "type": "array" },
+        "assemblySteps": { "type": "array" },
+        "scientificPrinciples": { "type": "array" },
+        "vivaQuestions": { "type": "array" },
+        "blockDiagram": { "type": "string" },
+        "safetyTips": { "type": "array" },
+        "extensionIdeas": { "type": "array" },
+        "studentNotes": { "type": "string" },
+        "exhibitionChecklist": { "type": "object" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile records"
+    },
+    "/users/{userId}/projects/{projectId}": {
+      "schema": "Project",
+      "description": "Student projects, prototypes, and exhibition dossiers"
+    }
+  }
+}

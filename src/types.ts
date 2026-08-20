@@ -47,9 +47,44 @@ export interface VivaQuestion {
   userKnown?: boolean;
 }
 
+export interface StudentLogEntry {
+  id: string;
+  timestamp: string;
+  title: string;
+  notes: string;
+  sensorReadings?: string;
+}
+
+export interface ExhibitionDossier {
+  problemStatement: string;
+  hypothesis: string;
+  modelType: "Working Interactive Prototype" | "Display Demonstration Model" | "IoT Connected Sentry" | "Mechanical Simulation Model";
+  displayBoardGuide: {
+    abstract: string;
+    methodology: string;
+    keyObservations: string;
+    realWorldImpact: string;
+  };
+  twoMinuteJudgePitch: string;
+  modelConstructionTips: string[];
+  safetyChecklist: string[];
+}
+
+export interface ImagePromptSuggestion {
+  id: string;
+  style: "3D Physical Prototype Model" | "Exploded CAD & Hardware Assembly" | "Science Exhibition Booth & Display Board" | "Cutaway Realistic Circuit & Transducer";
+  title: string;
+  prompt: string;
+  negativePrompt?: string;
+  recommendedAspect: "16:9" | "4:3" | "1:1";
+  keyElementsHighlighted: string[];
+}
+
 export interface ProjectBlueprint {
   id: string;
+  userId?: string;
   createdAt: string;
+  updatedAt?: string;
   title: string;
   angleTag: string;
   overview: string;
@@ -71,16 +106,29 @@ export interface ProjectBlueprint {
   generatedImages?: string[];
   uploadedImages?: string[];
   isAiGenerated?: boolean;
+  
+  // Science Exhibition & Prototype Expansion
+  exhibitionDossier?: ExhibitionDossier;
+  studentNotes?: string;
+  studentLogs?: StudentLogEntry[];
+  exhibitionChecklist?: Record<string, boolean>;
+  
+  // AI Image Creation Prompts Tailored to the Idea
+  imagePrompts?: ImagePromptSuggestion[];
 }
 
 export interface UserProfile {
+  uid?: string;
   name: string;
   email: string;
-  institution: string;
-  rollNumber: string;
-  branch: string;
-  bio: string;
-  preferredLevel: StudentLevel;
+  institution?: string;
+  gradeClass?: string;
+  teamMembers?: string;
+  rollNumber?: string;
+  branch?: string;
+  bio?: string;
+  preferredLevel?: StudentLevel;
+  createdAt?: string;
 }
 
 export interface GeneratorInputs {
@@ -88,4 +136,21 @@ export interface GeneratorInputs {
   subject: SubjectArea;
   topic: string;
   budget: BudgetRange;
+}
+
+export interface SuggestedProjectPrompt {
+  id: string;
+  title: string;
+  category: string;
+  tagline: string;
+  problemAddressed: string;
+  prototypeModelIdea: string;
+  exhibitionWinningFactor: string;
+  difficulty: "Beginner" | "Intermediate" | "Advanced";
+  suitabilityScore: number; // e.g. 98%
+  level: StudentLevel;
+  subject: SubjectArea;
+  budget: BudgetRange;
+  suggestedMaterials: string[];
+  tags: string[];
 }

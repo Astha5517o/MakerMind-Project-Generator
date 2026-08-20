@@ -76,7 +76,7 @@ app.post("/api/generate-blueprint", async (req, res) => {
       return res.json({ success: true, blueprint: fallbackBp, isFallback: true });
     }
 
-    const prompt = `Generate an authoritative, highly customized, and accurate STEM project blueprint tailored specifically to the user's topic:
+    const prompt = `Generate an authoritative, highly customized, domain-accurate, and non-mismatched STEM project blueprint tailored specifically to the user's topic:
 - Target Topic / Concept: "${topic || "Smart Automated System"}"
 - Academic Level: ${level || "High School / Class 11-12"}
 - Subject Discipline: ${subject || "Robotics & Electronics"}
@@ -84,14 +84,24 @@ app.post("/api/generate-blueprint", async (req, res) => {
 - Innovation Seed / Variation Nonce: ${angleNonce || Date.now()}
 - Force New Perspective: ${forceNewAngle ? "YES - explore a completely distinct technical mechanism or sensor topology" : "NO"}
 
-STRICT ACCURACY & TITLE MANDATES:
-1. TITLE: Create an ACCURATE, specific, formal academic project title that explicitly mentions the user's exact topic "${topic}" and key hardware/technique used. (e.g. For "solar tracker" -> "Dual-Axis Solar Tracker with LDR Sensors & Servo Optimization"; for "blind stick" -> "Microcontroller-Based Smart Blind Stick with Ultrasonic Sensing & Haptic Feedback"). DO NOT output generic titles like "Smart System" or "Project v1.0".
-2. OVERVIEW: Write a 3-4 sentence project overview directly explaining how this project solves the specific real-world problem of "${topic}".
-3. MATERIALS / BOM: Choose 5-8 REAL, domain-specific components with accurate Indian Rupee (₹) pricing explicitly required for "${topic}" (e.g. if water quality -> pH sensor / turbidity sensor; if security -> PIR / solenoid / buzzer; if vehicle -> motors / driver / chassis).
-4. ASSEMBLY STEPS: Provide 5 detailed step-by-step assembly instructions with pin wiring and code/circuit snippets specifically for "${topic}".
-5. SCIENTIFIC PRINCIPLES: Detail 3 fundamental scientific principles governing how "${topic}" operates.
-6. VIVA VOCE QUESTIONS: Provide 5 lab examiner questions and complete answers directly testing concepts related to "${topic}".
-7. ASCII BLOCK DIAGRAM: Provide an ASCII signal flow diagram connecting the specific sensors and actuators used for "${topic}".`;
+STRICT TOPIC & MATERIAL ACCURACY MANDATES (NO MISMATCHED SUGGESTIONS):
+1. NO GENERIC REPETITION & NO MISMATCHED MATERIALS:
+   - Every single material in the Bill of Materials (BOM) MUST strictly and directly belong to the user's topic "${topic}".
+   - If topic is Physics/Mechanics (e.g. Hydraulic Arm, Seismic Detector, Maglev): Include actual syringes, fluid tubes, neodymium magnets, copper coils, laser sensors, or accelerometers. DO NOT arbitrarily throw in unrelated sensors.
+   - If topic is Chemistry/Biology/Bio-Tech (e.g. Water Filter, Bioplastic, Algae Bio-reactor): Include actual test tubes, pH sensors, active carbon, agar plates, titration valves, TDS meters, or peristaltic pumps.
+   - If topic is Electronics/IoT/Robotics (e.g. Gas Detector, Solar Tracker, Obstacle Rover): Include exact topic-specific sensors (e.g. MQ-2 for gas, LDR array for solar, HC-SR04 for rover) with matching drivers and power ratings.
+2. TITLE: Create an ACCURATE, specific, formal academic project title that explicitly mentions the user's exact topic "${topic}" and key hardware/technique used.
+3. OVERVIEW: Write a 3-4 sentence project overview directly explaining how this project solves the specific real-world problem of "${topic}".
+4. 4 TAILORED AI IMAGE CREATION PROMPTS:
+   - Provide 4 distinct, highly detailed, ready-to-use AI image generation prompts for Midjourney / DALL-E / Imagen / Stable Diffusion tailored specifically to visualize this exact project:
+     1. "3D Physical Prototype Model" - Highly detailed prompt describing the physical model on a neat wooden/acrylic baseboard, labeled transducers, LEDs, and wiring.
+     2. "Exploded CAD & Hardware Assembly" - Technical exploded view showing casing, mounting brackets, screws, and circuit layout.
+     3. "Science Exhibition Booth & Display Board" - Wide shot of student exhibition booth with a 3-panel trifold display poster, working prototype, and demonstration samples.
+     4. "Cutaway Realistic Circuit & Transducer" - Close-up render focusing on the main sensor module, display, and signal wires.
+5. ASSEMBLY STEPS: Provide 5 detailed step-by-step assembly instructions with pin wiring and code/circuit snippets specifically for "${topic}".
+6. SCIENTIFIC PRINCIPLES: Detail 3 fundamental scientific principles governing how "${topic}" operates.
+7. VIVA VOCE QUESTIONS: Provide 5 lab examiner questions and complete answers directly testing concepts related to "${topic}".
+8. ASCII BLOCK DIAGRAM: Provide an ASCII signal flow diagram connecting the specific sensors and actuators used for "${topic}".`;
 
     const response = await callGeminiWithRetry(() =>
       ai.models.generateContent({
@@ -99,7 +109,7 @@ STRICT ACCURACY & TITLE MANDATES:
         contents: prompt,
         config: {
           systemInstruction:
-            "You are MakerMind, a world-class STEM project architect and engineering professor. Your duty is to generate ACCURATE, custom, specific, and realistic STEM project blueprints based on the user's specific project topic. NEVER return generic boilerplate or repeated titles. Each project MUST have a unique, precise, academic title that directly incorporates the user's specific topic, hardware components, and technical approach.",
+            "You are MakerMind, a world-class STEM project architect and engineering professor. Your duty is to generate ACCURATE, custom, specific, and realistic STEM project blueprints based on the user's specific project topic. NEVER return generic boilerplate, repeated titles, or mismatched components. Every component, step, viva question, and image generation prompt must strictly match the physics, chemistry, electronics, and engineering domain of the user's topic.",
           temperature: 0.85,
           responseMimeType: "application/json",
           responseSchema: {
@@ -176,6 +186,54 @@ STRICT ACCURACY & TITLE MANDATES:
               extensionIdeas: {
                 type: Type.ARRAY,
                 items: { type: Type.STRING }
+              },
+              imagePrompts: {
+                type: Type.ARRAY,
+                description: "4 detailed AI image generation prompts tailored specifically to create visuals of this model",
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    id: { type: Type.STRING },
+                    style: { type: Type.STRING },
+                    title: { type: Type.STRING },
+                    prompt: { type: Type.STRING },
+                    negativePrompt: { type: Type.STRING },
+                    recommendedAspect: { type: Type.STRING },
+                    keyElementsHighlighted: {
+                      type: Type.ARRAY,
+                      items: { type: Type.STRING }
+                    }
+                  },
+                  required: ["id", "style", "title", "prompt", "recommendedAspect", "keyElementsHighlighted"]
+                }
+              },
+              exhibitionDossier: {
+                type: Type.OBJECT,
+                properties: {
+                  problemStatement: { type: Type.STRING },
+                  hypothesis: { type: Type.STRING },
+                  modelType: { type: Type.STRING },
+                  displayBoardGuide: {
+                    type: Type.OBJECT,
+                    properties: {
+                      abstract: { type: Type.STRING },
+                      methodology: { type: Type.STRING },
+                      keyObservations: { type: Type.STRING },
+                      realWorldImpact: { type: Type.STRING }
+                    },
+                    required: ["abstract", "methodology", "keyObservations", "realWorldImpact"]
+                  },
+                  twoMinuteJudgePitch: { type: Type.STRING },
+                  modelConstructionTips: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                  },
+                  safetyChecklist: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                  }
+                },
+                required: ["problemStatement", "hypothesis", "modelType", "displayBoardGuide", "twoMinuteJudgePitch", "modelConstructionTips", "safetyChecklist"]
               }
             },
             required: [
@@ -216,6 +274,86 @@ STRICT ACCURACY & TITLE MANDATES:
       isFallback: true,
       notice: "High model demand detected; generated using MakerMind local STEM engine."
     });
+  }
+});
+
+// API Prompt Suggestions & Science Exhibition Brainstormer
+app.post("/api/suggest-prompts", async (req, res) => {
+  const { studentInterest, level, subject, count = 4 } = req.body;
+
+  try {
+    const ai = getGeminiClient();
+    if (!ai) {
+      return res.json({ success: true, prompts: [], useCurated: true });
+    }
+
+    const promptText = `Generate ${count} highly creative, award-winning science fair / exhibition project prompt ideas for students based on:
+- Student Interest / Theme: "${studentInterest || "Renewable Energy & IoT"}"
+- Academic Grade / Level: ${level || "High School (Class 11-12)"}
+- Subject Area: ${subject || "Robotics & Electronics"}
+
+Each project must be practical, have a working physical prototype or demonstration model, and be suitable for science exhibitions and competitions.`;
+
+    const response = await callGeminiWithRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-3.6-flash",
+        contents: promptText,
+        config: {
+          systemInstruction:
+            "You are a Senior Science Fair Judge and STEM Innovation Mentor. You suggest high-impact, realistic science exhibition project prompts that win awards, feature working physical models, and solve real community or technological problems.",
+          temperature: 0.85,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.STRING },
+                title: { type: Type.STRING },
+                category: { type: Type.STRING },
+                tagline: { type: Type.STRING },
+                problemAddressed: { type: Type.STRING },
+                prototypeModelIdea: { type: Type.STRING },
+                exhibitionWinningFactor: { type: Type.STRING },
+                difficulty: { type: Type.STRING, enum: ["Beginner", "Intermediate", "Advanced"] },
+                suitabilityScore: { type: Type.NUMBER },
+                level: { type: Type.STRING },
+                subject: { type: Type.STRING },
+                budget: { type: Type.STRING },
+                suggestedMaterials: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING }
+                },
+                tags: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING }
+                }
+              },
+              required: [
+                "id",
+                "title",
+                "category",
+                "tagline",
+                "problemAddressed",
+                "prototypeModelIdea",
+                "exhibitionWinningFactor",
+                "difficulty",
+                "suitabilityScore",
+                "suggestedMaterials",
+                "tags"
+              ]
+            }
+          }
+        }
+      })
+    );
+
+    const jsonText = response.text || "[]";
+    const prompts = JSON.parse(jsonText);
+    return res.json({ success: true, prompts, isFallback: false });
+  } catch (err: any) {
+    console.warn("Prompt Suggestion Fallback:", err?.message || err);
+    return res.json({ success: true, prompts: [], useCurated: true });
   }
 });
 

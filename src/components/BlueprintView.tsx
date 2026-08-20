@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { ProjectBlueprint, MaterialItem, UserProfile } from "../types";
+import { ExhibitionDossierTab } from "./ExhibitionDossierTab";
 import { 
   Sparkles, 
   RefreshCw, 
@@ -42,6 +43,9 @@ interface BlueprintViewProps {
   onSave: (blueprint: ProjectBlueprint) => void;
   isSaved: boolean;
   isRegenerating: boolean;
+  onUpdateBlueprint?: (updates: Partial<ProjectBlueprint>) => void;
+  isAuthenticated?: boolean;
+  onOpenAuth?: () => void;
 }
 
 export const BlueprintView: React.FC<BlueprintViewProps> = ({
@@ -50,8 +54,11 @@ export const BlueprintView: React.FC<BlueprintViewProps> = ({
   onSave,
   isSaved,
   isRegenerating,
+  onUpdateBlueprint,
+  isAuthenticated = false,
+  onOpenAuth = () => {}
 }) => {
-  const [activeTab, setActiveTab] = useState<"overview" | "materials" | "steps" | "principles" | "viva" | "extensions" | "images">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "exhibition" | "materials" | "steps" | "principles" | "viva" | "extensions" | "images">("exhibition");
   const [copied, setCopied] = useState(false);
   const [materials, setMaterials] = useState<MaterialItem[]>(blueprint.materials);
   const [revealedViva, setRevealedViva] = useState<Record<string, boolean>>({});
@@ -86,6 +93,110 @@ export const BlueprintView: React.FC<BlueprintViewProps> = ({
   const [selectedImageStyle, setSelectedImageStyle] = useState("3D Photorealistic Prototype");
   const [customImagePrompt, setCustomImagePrompt] = useState("");
   const [activeLightboxImage, setActiveLightboxImage] = useState<string | null>(null);
+  const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
+
+  // Derived suggested image prompts tailored to the user's idea
+  const suggestedPrompts = blueprint.imagePrompts && blueprint.imagePrompts.length > 0
+    ? blueprint.imagePrompts
+    : [
+        {
+          id: "prompt-1",
+          style: "3D Physical Prototype Model" as const,
+          title: "Exhibition-Ready Physical Hardware Model",
+          prompt: `A clean, hyper-realistic studio product photograph of a working STEM student exhibition prototype: "${blueprint.title}". Mounted on a pristine white 5mm acrylic baseboard with rounded edges. Clearly visible components include ${materials.slice(0, 4).map(m => m.name.split('(')[0].trim()).join(", ")}, neat spiral-wrapped wiring, glowing status LEDs, illuminated OLED display showing live telemetry readings. Soft overhead studio lighting, crisp macro depth of field, 8k resolution, clean background.`,
+          recommendedAspect: "16:9" as const,
+          keyElementsHighlighted: [
+            "White Acrylic Mounting Base",
+            materials[0]?.name.split('(')[0].trim() || "Main Transducer",
+            materials[1]?.name.split('(')[0].trim() || "Microcontroller",
+            "Illuminated Display & Cable Harness"
+          ]
+        },
+        {
+          id: "prompt-2",
+          style: "Exploded CAD & Hardware Assembly" as const,
+          title: "Exploded 3D CAD & Technical Assembly View",
+          prompt: `An exploded isometric 3D CAD technical blueprint rendering of "${blueprint.title}". Displays the outer translucent acrylic chassis, structural standoffs, PCB board, ${materials.slice(0, 3).map(m => m.name.split('(')[0].trim()).join(", ")}, mechanical linkages, and fastening screws floating in aligned axis. Clean technical blueprint background with dimension lines and component callout labels.`,
+          recommendedAspect: "16:9" as const,
+          keyElementsHighlighted: [
+            "Exploded Axis Breakdown",
+            "Translucent Enclosure Casing",
+            "Hardware Fasteners & Standoffs",
+            "PCB Trace Alignment"
+          ]
+        },
+        {
+          id: "prompt-3",
+          style: "Science Exhibition Booth & Display Board" as const,
+          title: "Science Fair Award-Winning Demonstration Booth",
+          prompt: `A vibrant, high-energy photo of a high-school / college science exhibition competition booth featuring "${blueprint.title}". In the foreground, the working physical model is active with demonstration lights and sample test items. In the background, a neat 3-panel trifold display poster board with title "${blueprint.title}", hypothesis, circuit diagram, and graphs. Bright exhibition hall lighting, award-winning student STEM atmosphere.`,
+          recommendedAspect: "16:9" as const,
+          keyElementsHighlighted: [
+            "3-Panel Trifold Poster Board",
+            "Active Working Tabletop Model",
+            "Science Fair Judging Setup",
+            "Observation Charts"
+          ]
+        },
+        {
+          id: "prompt-4",
+          style: "Cutaway Realistic Circuit & Transducer" as const,
+          title: "Macro Circuitry & Transducer Interface",
+          prompt: `A detailed macro close-up view focusing on the primary sensor and micro-controller interface of "${blueprint.title}". Shows ${materials[0]?.name.split('(')[0].trim() || "the primary transducer"} wired with gold-plated pins, surface-mount resistors, miniature power regulator, and active status indicator LEDs. Beautiful bokeh, clean electronics lab photography.`,
+          recommendedAspect: "4:3" as const,
+          keyElementsHighlighted: [
+            "Macro Sensor Detail",
+            "IC Pin Interconnects",
+            "SMD Component Traces",
+            "Indicator LED Glow"
+          ]
+        }
+      ];
+
+  const handleCopyPrompt = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedPromptId(id);
+    setTimeout(() => setCopiedPromptId(null), 2500);
+  };
+
+  const handleUsePrompt = (promptText: string, style: string) => {
+    setCustomImagePrompt(promptText);
+    if (style.includes("CAD")) {
+      setSelectedImageStyle("Technical Blueprint & CAD Layout");
+    } else if (style.includes("Circuit")) {
+      setSelectedImageStyle("Circuit Schematic & Wiring Diagram");
+    } else {
+      setSelectedImageStyle("3D Photorealistic Prototype");
+    }
+    // Scroll smoothly to the generator section
+    const el = document.getElementById("ai-image-generator-controls");
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleDownloadAllPrompts = () => {
+    const text = `=====================================================
+AI IMAGE & MODEL CREATION PROMPTS FOR:
+${blueprint.title}
+=====================================================
+
+${suggestedPrompts.map((p, idx) => `
+[PROMPT ${idx + 1}: ${p.title}]
+Style: ${p.style}
+Recommended Aspect Ratio: ${p.recommendedAspect}
+Key Elements: ${p.keyElementsHighlighted.join(", ")}
+
+PROMPT:
+${p.prompt}
+-----------------------------------------------------`).join("\n")}
+`;
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${blueprint.title.toLowerCase().replace(/[^a-z0-9]/g, "-")}-image-prompts.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   // Custom material addition
   const [newMatName, setNewMatName] = useState("");
@@ -375,6 +486,18 @@ ${blueprint.vivaQuestions.map((v, i) => `**Q${i+1}: ${v.question}**\n*Answer:* $
       {/* Navigation Tabs */}
       <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-2">
         <button
+          onClick={() => setActiveTab("exhibition")}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            activeTab === "exhibition"
+              ? "bg-gradient-to-r from-amber-500/20 to-indigo-500/20 text-amber-300 border border-amber-500/40 shadow-md"
+              : "text-slate-300 hover:text-white bg-slate-900/80 border border-slate-800 hover:border-slate-700"
+          }`}
+        >
+          <Award className="w-4 h-4 text-amber-400" />
+          <span>🏆 Science Exhibition & Prototype Studio</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab("overview")}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
             activeTab === "overview"
@@ -458,6 +581,16 @@ ${blueprint.vivaQuestions.map((v, i) => `**Q${i+1}: ${v.question}**\n*Answer:* $
           <span>Safety & Science Fair</span>
         </button>
       </div>
+
+      {/* Tab: Science Exhibition & Prototype Studio */}
+      {activeTab === "exhibition" && (
+        <ExhibitionDossierTab
+          blueprint={blueprint}
+          onUpdateBlueprint={onUpdateBlueprint}
+          isAuthenticated={isAuthenticated}
+          onOpenAuth={onOpenAuth}
+        />
+      )}
 
       {/* Tab 1: System Architecture & Overview */}
       {activeTab === "overview" && (
@@ -843,8 +976,123 @@ ${blueprint.vivaQuestions.map((v, i) => `**Q${i+1}: ${v.question}**\n*Answer:* $
       {/* Tab 7: AI Image & Schematics Creator Studio */}
       {activeTab === "images" && (
         <div className="space-y-6 animate-fadeIn">
+
+          {/* Dedicated AI Model Creation Prompts Panel (Tailored to Idea) */}
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-500/30 rounded-2xl p-6 space-y-5 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-[10px] font-extrabold uppercase tracking-wider">
+                    Model Creation Prompts
+                  </span>
+                  <span className="text-xs text-slate-500 font-mono">
+                    Tailored for: {blueprint.title.substring(0, 35)}...
+                  </span>
+                </div>
+                <h3 className="text-base font-extrabold text-white mt-1 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-emerald-400" />
+                  Suggested AI Prompts for Physical Prototype & Model Visuals
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Copy these pre-engineered, highly detailed prompts into Midjourney, DALL-E 3, Imagen, Stable Diffusion, or use our generator below.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleDownloadAllPrompts}
+                className="px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-2 transition-all shrink-0 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Export Prompts (.txt)</span>
+              </button>
+            </div>
+
+            {/* Grid of Suggested Prompts */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {suggestedPrompts.map((p, idx) => {
+                const isCopied = copiedPromptId === p.id;
+                return (
+                  <div
+                    key={p.id || idx}
+                    className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 hover:border-slate-700 transition-all flex flex-col justify-between space-y-3 group"
+                  >
+                    <div>
+                      {/* Style & Aspect Badges */}
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="px-2 py-0.5 rounded-md bg-indigo-950 border border-indigo-800 text-indigo-300 text-[10px] font-bold">
+                          {p.style}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-mono">
+                          Aspect: {p.recommendedAspect}
+                        </span>
+                      </div>
+
+                      <h4 className="text-xs font-bold text-slate-200">
+                        {p.title}
+                      </h4>
+
+                      {/* Prompt Content */}
+                      <p className="text-[11px] text-slate-400 mt-2 line-clamp-4 leading-relaxed font-sans bg-slate-900/60 p-2.5 rounded-lg border border-slate-800/80">
+                        "{p.prompt}"
+                      </p>
+
+                      {/* Key Elements Tags */}
+                      {p.keyElementsHighlighted && p.keyElementsHighlighted.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2.5">
+                          {p.keyElementsHighlighted.map((tag, tIdx) => (
+                            <span
+                              key={tIdx}
+                              className="text-[9px] px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800"
+                            >
+                              • {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-900">
+                      <button
+                        type="button"
+                        onClick={() => handleCopyPrompt(p.id, p.prompt)}
+                        className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          isCopied
+                            ? "bg-emerald-500 text-slate-950 font-bold"
+                            : "bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800"
+                        }`}
+                      >
+                        {isCopied ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Copied to Clipboard!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 text-indigo-400" />
+                            <span>Copy Prompt</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleUsePrompt(p.prompt, p.style)}
+                        className="py-1.5 px-3 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>Use in Generator</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Generator Studio Card */}
-          <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-6">
+          <div id="ai-image-generator-controls" className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
               <div>
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
@@ -888,7 +1136,7 @@ ${blueprint.vivaQuestions.map((v, i) => `**Q${i+1}: ${v.question}**\n*Answer:* $
                         key={styleOption}
                         type="button"
                         onClick={() => setSelectedImageStyle(styleOption)}
-                        className={`p-3 rounded-xl border text-xs font-semibold text-left transition-all ${
+                        className={`p-3 rounded-xl border text-xs font-semibold text-left transition-all cursor-pointer ${
                           active
                             ? "bg-slate-800 border-indigo-500 text-white shadow-md shadow-indigo-900/20"
                             : "bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200"
@@ -902,15 +1150,26 @@ ${blueprint.vivaQuestions.map((v, i) => `**Q${i+1}: ${v.question}**\n*Answer:* $
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-                  2. Prompt Customization (Optional)
-                </label>
-                <input
-                  type="text"
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
+                    2. Prompt Customization (Auto-Populated or Custom)
+                  </label>
+                  {customImagePrompt && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomImagePrompt("")}
+                      className="text-[11px] text-slate-500 hover:text-slate-300"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  rows={3}
                   value={customImagePrompt}
                   onChange={(e) => setCustomImagePrompt(e.target.value)}
                   placeholder={`e.g. A clean working lab bench prototype of ${blueprint.title} with LED status indicators and neat wiring`}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 text-xs"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 text-xs leading-relaxed"
                 />
               </div>
 
