@@ -3,6 +3,49 @@ export type StudentLevel =
   | "High School (Class 11-12)" 
   | "College / Engineering";
 
+export type SupportedRegion = 
+  | "global" 
+  | "japan" 
+  | "china" 
+  | "usa" 
+  | "india" 
+  | "uk_europe" 
+  | "germany";
+
+export type SupportedLanguage = 
+  | "en" 
+  | "ja" 
+  | "zh" 
+  | "hi" 
+  | "es" 
+  | "de";
+
+export type SupportedCurrency = 
+  | "INR" 
+  | "USD" 
+  | "JPY" 
+  | "CNY" 
+  | "EUR" 
+  | "GBP";
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  role: "Team Lead & Project Architect" | "Circuit & Hardware Lead" | "Embedded Firmware Coder" | "Model Enclosure & Mechanical" | "Exhibition Defense & Poster Lead";
+  email?: string;
+  gradeOrSchool?: string;
+}
+
+export interface RoadmapMilestone {
+  id: string;
+  stageNumber: number;
+  title: string;
+  subtitle: string;
+  keyDeliverable: string;
+  estimatedTime: string;
+  completed?: boolean;
+}
+
 export type SubjectArea = 
   | "Computer Science & AI"
   | "Physics & Applied Mechanics"
@@ -115,6 +158,12 @@ export interface ProjectBlueprint {
   
   // AI Image Creation Prompts Tailored to the Idea
   imagePrompts?: ImagePromptSuggestion[];
+
+  // Multi-person Team & Project Execution Roadmap
+  teamMembersList?: TeamMember[];
+  roadmapMilestones?: RoadmapMilestone[];
+  region?: SupportedRegion;
+  countryName?: string;
 }
 
 export interface UserProfile {
@@ -128,6 +177,9 @@ export interface UserProfile {
   branch?: string;
   bio?: string;
   preferredLevel?: StudentLevel;
+  preferredRegion?: SupportedRegion;
+  preferredCurrency?: SupportedCurrency;
+  preferredLanguage?: SupportedLanguage;
   createdAt?: string;
 }
 
@@ -136,6 +188,8 @@ export interface GeneratorInputs {
   subject: SubjectArea;
   topic: string;
   budget: BudgetRange;
+  region?: SupportedRegion;
+  countryName?: string;
 }
 
 export interface SuggestedProjectPrompt {

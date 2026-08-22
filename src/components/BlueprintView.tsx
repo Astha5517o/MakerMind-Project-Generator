@@ -1,6 +1,15 @@
 import React, { useState } from "react";
-import { ProjectBlueprint, MaterialItem, UserProfile } from "../types";
+import { 
+  ProjectBlueprint, 
+  MaterialItem, 
+  UserProfile, 
+  SupportedCurrency, 
+  SupportedRegion 
+} from "../types";
 import { ExhibitionDossierTab } from "./ExhibitionDossierTab";
+import { RoadmapTab } from "./RoadmapTab";
+import { TeamTab } from "./TeamTab";
+import { CURRENCIES_CONFIG, REGIONS_CONFIG } from "../data/internationalization";
 import { 
   Sparkles, 
   RefreshCw, 
@@ -34,7 +43,11 @@ import {
   Maximize2,
   Trash2,
   User,
-  X
+  X,
+  Compass,
+  Users,
+  Coins,
+  Globe
 } from "lucide-react";
 
 interface BlueprintViewProps {
@@ -46,6 +59,8 @@ interface BlueprintViewProps {
   onUpdateBlueprint?: (updates: Partial<ProjectBlueprint>) => void;
   isAuthenticated?: boolean;
   onOpenAuth?: () => void;
+  currentRegion?: SupportedRegion;
+  currentCurrency?: SupportedCurrency;
 }
 
 export const BlueprintView: React.FC<BlueprintViewProps> = ({
@@ -56,9 +71,12 @@ export const BlueprintView: React.FC<BlueprintViewProps> = ({
   isRegenerating,
   onUpdateBlueprint,
   isAuthenticated = false,
-  onOpenAuth = () => {}
+  onOpenAuth = () => {},
+  currentRegion = "global",
+  currentCurrency: initialCurrency = "INR"
 }) => {
-  const [activeTab, setActiveTab] = useState<"overview" | "exhibition" | "materials" | "steps" | "principles" | "viva" | "extensions" | "images">("exhibition");
+  const [activeTab, setActiveTab] = useState<"roadmap" | "overview" | "exhibition" | "materials" | "steps" | "principles" | "viva" | "extensions" | "images" | "team">("roadmap");
+  const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>(initialCurrency);
   const [copied, setCopied] = useState(false);
   const [materials, setMaterials] = useState<MaterialItem[]>(blueprint.materials);
   const [revealedViva, setRevealedViva] = useState<Record<string, boolean>>({});
@@ -486,6 +504,18 @@ ${blueprint.vivaQuestions.map((v, i) => `**Q${i+1}: ${v.question}**\n*Answer:* $
       {/* Navigation Tabs */}
       <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-2">
         <button
+          onClick={() => setActiveTab("roadmap")}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            activeTab === "roadmap"
+              ? "bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-500/40 shadow-md"
+              : "text-slate-300 hover:text-white bg-slate-900/80 border border-slate-800 hover:border-slate-700"
+          }`}
+        >
+          <Compass className="w-4 h-4 text-emerald-400" />
+          <span>🚀 5-Stage Execution Roadmap</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab("exhibition")}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
             activeTab === "exhibition"
@@ -494,31 +524,7 @@ ${blueprint.vivaQuestions.map((v, i) => `**Q${i+1}: ${v.question}**\n*Answer:* $
           }`}
         >
           <Award className="w-4 h-4 text-amber-400" />
-          <span>🏆 Science Exhibition & Prototype Studio</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("overview")}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-            activeTab === "overview"
-              ? "bg-slate-800 text-white border border-slate-700 shadow-sm"
-              : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/50"
-          }`}
-        >
-          <Layers className="w-4 h-4 text-emerald-400" />
-          <span>System Architecture</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("images")}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-            activeTab === "images"
-              ? "bg-slate-800 text-white border border-slate-700 shadow-sm"
-              : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/50"
-          }`}
-        >
-          <ImageIcon className="w-4 h-4 text-indigo-400" />
-          <span>Image & Schematics Studio ({images.length})</span>
+          <span>🏆 Exhibition Pitch & Dossier</span>
         </button>
 
         <button
@@ -530,7 +536,7 @@ ${blueprint.vivaQuestions.map((v, i) => `**Q${i+1}: ${v.question}**\n*Answer:* $
           }`}
         >
           <Wrench className="w-4 h-4 text-amber-400" />
-          <span>Components BOM (₹{totalCost})</span>
+          <span>📦 Components BOM ({CURRENCIES_CONFIG[selectedCurrency]?.format(totalCost) || `₹${totalCost}`})</span>
         </button>
 
         <button
@@ -570,17 +576,57 @@ ${blueprint.vivaQuestions.map((v, i) => `**Q${i+1}: ${v.question}**\n*Answer:* $
         </button>
 
         <button
-          onClick={() => setActiveTab("extensions")}
+          onClick={() => setActiveTab("images")}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-            activeTab === "extensions"
+            activeTab === "images"
               ? "bg-slate-800 text-white border border-slate-700 shadow-sm"
               : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/50"
           }`}
         >
-          <Award className="w-4 h-4 text-emerald-400" />
-          <span>Safety & Science Fair</span>
+          <ImageIcon className="w-4 h-4 text-indigo-400" />
+          <span>AI Prototype Studio ({images.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("team")}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            activeTab === "team"
+              ? "bg-slate-800 text-white border border-slate-700 shadow-sm"
+              : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/50"
+          }`}
+        >
+          <Users className="w-4 h-4 text-teal-400" />
+          <span>👥 Research Team</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("overview")}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            activeTab === "overview"
+              ? "bg-slate-800 text-white border border-slate-700 shadow-sm"
+              : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/50"
+          }`}
+        >
+          <Layers className="w-4 h-4 text-slate-400" />
+          <span>System Diagram</span>
         </button>
       </div>
+
+      {/* Tab: 5-Stage Real Project Execution Roadmap */}
+      {activeTab === "roadmap" && (
+        <RoadmapTab
+          blueprint={blueprint}
+          currentRegion={currentRegion}
+        />
+      )}
+
+      {/* Tab: Multi-Person Collaborative Team */}
+      {activeTab === "team" && (
+        <TeamTab
+          blueprint={blueprint}
+          onUpdateBlueprint={onUpdateBlueprint}
+        />
+      )}
 
       {/* Tab: Science Exhibition & Prototype Studio */}
       {activeTab === "exhibition" && (
@@ -627,26 +673,69 @@ ${blueprint.vivaQuestions.map((v, i) => `**Q${i+1}: ${v.question}**\n*Answer:* $
       {/* Tab 2: Bill of Materials (BOM) */}
       {activeTab === "materials" && (
         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
             <div>
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <div className="w-1.5 h-4 bg-emerald-500" />
-                Materials Checklist
-              </h3>
+                <h3 className="text-xs font-bold text-slate-200 uppercase tracking-widest">
+                  Bill of Materials (BOM) & Component Acquisition Checklist
+                </h3>
+              </div>
               <p className="text-xs text-slate-400 mt-1">
-                Check off components as you acquire them. Total cost updates automatically in INR (₹).
+                Check off components as you acquire them. Prices dynamically convert to your local currency.
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
-                <span className="text-slate-400">Total Estimated: </span>
-                <strong className="text-emerald-400 font-bold">₹{totalCost}</strong>
+
+            {/* Currency Switcher in BOM */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                {(Object.keys(CURRENCIES_CONFIG) as SupportedCurrency[]).map((cKey) => {
+                  const curr = CURRENCIES_CONFIG[cKey];
+                  const isCur = selectedCurrency === cKey;
+                  return (
+                    <button
+                      key={cKey}
+                      onClick={() => setSelectedCurrency(cKey)}
+                      className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        isCur
+                          ? "bg-emerald-500 text-slate-950 shadow-sm"
+                          : "text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      {curr.symbol} {curr.code}
+                    </button>
+                  );
+                })}
               </div>
-              <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
-                <span className="text-slate-400">Remaining to Buy: </span>
-                <strong className="text-amber-400 font-bold">₹{remainingCost}</strong>
+
+              <div className="flex items-center gap-2">
+                <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+                  <span className="text-slate-400">Total: </span>
+                  <strong className="text-emerald-400 font-bold">
+                    {CURRENCIES_CONFIG[selectedCurrency]?.format(totalCost) || `₹${totalCost}`}
+                  </strong>
+                </div>
+                <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+                  <span className="text-slate-400">To Buy: </span>
+                  <strong className="text-amber-400 font-bold">
+                    {CURRENCIES_CONFIG[selectedCurrency]?.format(remainingCost) || `₹${remainingCost}`}
+                  </strong>
+                </div>
               </div>
             </div>
+          </div>
+
+          {/* Regional Component Sourcing Hub Box */}
+          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800/90 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-300">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{REGIONS_CONFIG[currentRegion]?.flag || "🌐"}</span>
+              <div>
+                <strong>Local Sourcing Hub:</strong> {REGIONS_CONFIG[currentRegion]?.hardwareSourcingHub || "DigiKey / Mouser / AliExpress / Local Electronics Market"}
+              </div>
+            </div>
+            <span className="text-[11px] text-indigo-400 font-medium">
+              Verified for {REGIONS_CONFIG[currentRegion]?.countryName || "Global"} STEM Fairs
+            </span>
           </div>
 
           {/* Materials Table */}
@@ -689,7 +778,7 @@ ${blueprint.vivaQuestions.map((v, i) => `**Q${i+1}: ${v.question}**\n*Answer:* $
 
                 <div className="text-right shrink-0">
                   <span className="text-sm font-extrabold text-emerald-400">
-                    ₹{item.costINR}
+                    {CURRENCIES_CONFIG[selectedCurrency]?.format(item.costINR) || `₹${item.costINR}`}
                   </span>
                 </div>
               </div>
